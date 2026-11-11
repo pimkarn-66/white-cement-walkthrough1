@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>เดินเครื่องโรงงานปูน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #D6D4CF; --ground: #C4C1BA; --ink: #1C2024; --muted: #555B61;
+    --panel: rgba(240, 238, 234, .95); --line: #A9A6A0; --heat: #B83C0A; --hazard: #F2B705; --fuel: #5B6168; --good: #25744C;
+    --good-bg: #25744C; --heat-bg: #B83C0A;
+    --bar: #2A2F35; --bar-ink: #E9E7E2;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1E2226; --ground: #2A2E33; --ink: #ECEAE5; --muted: #A4A9AE; --panel: rgba(30, 34, 38, .95); --line: #474C52;
+      --heat: #F58A55; --fuel: #9AA1A8; --good: #4FBF85; --bar: #15181B; --good-bg: #25744C; --heat-bg: #B83C0A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1E2226; --ground: #2A2E33; --ink: #ECEAE5; --muted: #A4A9AE; --panel: rgba(30, 34, 38, .95); --line: #474C52;
+    --heat: #F58A55; --fuel: #9AA1A8; --good: #4FBF85; --bar: #15181B; --good-bg: #25744C; --heat-bg: #B83C0A;
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink);
+    font-family: "Archivo", "IBM Plex Sans Thai", "Helvetica Neue", Arial, sans-serif; display: flex; flex-direction: column; -webkit-tap-highlight-color: transparent; }
+  #wrap { position: relative; flex: 1; min-height: 0; }
+  #view { position: absolute; inset: 0; }
+  #stage { position: absolute; inset: 0; touch-action: none; }
+  #stage canvas { display: block; }
+  #tags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .tag { position: absolute; left: 0; top: 0; white-space: nowrap; font-weight: 700; font-stretch: 90%; font-size: 14px;
+    padding: 4px 9px; border-radius: 3px; background: var(--panel); border: 1.5px solid var(--line); color: var(--ink); transition: opacity .3s; }
+  .tag.off { opacity: 0; pointer-events: none !important; }
+  .tag.co2 { background: var(--heat-bg); color: #fff; border-color: var(--heat-bg); }
+  .tag.pick { pointer-events: auto; cursor: pointer; font-size: 15px; padding: 8px 12px; border: 2px solid var(--ink); }
+  .tag.pick.ok { background: var(--good-bg); border-color: var(--good-bg); color: #fff; }
+  .tag.pick.no { animation: shake .35s ease; background: var(--heat-bg); border-color: var(--heat-bg); color: #fff; }
+  @keyframes shake { 20%, 60% { margin-left: -6px; } 40%, 80% { margin-left: 6px; } }
+
+  #card { position: absolute; z-index: 2; left: clamp(12px, 2vw, 28px); top: clamp(12px, 2.5vh, 28px); width: min(410px, calc(100% - 24px));
+    max-height: calc(100% - 24px); overflow: auto; background: var(--panel); border: 2px solid var(--ink); border-radius: 4px; padding: 18px 18px 16px; }
+  #card::before { content: ""; position: absolute; left: -2px; right: -2px; top: -2px; height: 8px;
+    background: repeating-linear-gradient(-45deg, var(--hazard) 0 10px, #1C2024 10px 20px); }
+  .num { margin-top: 4px; font-size: 13px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .dots { display: flex; gap: 3px; } .dots i { width: 14px; height: 5px; background: var(--line); border-radius: 1px; } .dots i.on { background: var(--hazard); }
+  #title { margin: 4px 0 6px; font-size: clamp(24px, 3vw, 34px); line-height: 1.3; font-weight: 800; font-stretch: 84%; }
+  #task { margin: 0; font-size: 16px; line-height: 1.55; font-weight: 600; }
+  .hud { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .hud:empty { display: none; }
+  .meter { display: grid; grid-template-columns: 96px 1fr minmax(74px, auto); gap: 8px; align-items: center; font-size: 13px; font-weight: 700; }
+  .meter .tr { height: 12px; background: var(--line); border-radius: 2px; position: relative; overflow: hidden; }
+  .meter .fl { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--heat); }
+  .meter .mk { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); }
+  .meter b { white-space: nowrap; font-family: "Big Shoulders Stencil Display", "Archivo", "IBM Plex Sans Thai", sans-serif; font-size: 18px; text-align: right; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font-size: 13px; font-weight: 800; padding: 3px 8px; border-radius: 2px; color: #fff; }
+  .actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .actions:empty { display: none; }
+  .big { flex: 1; min-width: 120px; font: 800 17px "Archivo", "IBM Plex Sans Thai", Arial, sans-serif; font-stretch: 90%; padding: 14px 12px; border-radius: 4px;
+    border: 2px solid var(--ink); background: var(--ink); color: var(--bg); cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .big.hot { background: var(--heat-bg); border-color: var(--heat-bg); color: #fff; }
+  .big.alt { background: transparent; color: var(--ink); }
+  .big.held { filter: brightness(1.2); transform: scale(.97); }
+  .big:disabled { opacity: .4; cursor: default; }
+  .big.okbtn { background: var(--good-bg); border-color: var(--good-bg); color: #fff; opacity: 1; }
+  .big.shakebtn { animation: shake .35s ease; border-color: var(--heat); color: var(--heat); }
+  .tag.next { font-size: 15px; }
+  .big:focus-visible, .bar button:focus-visible, .tag.pick:focus-visible { outline: 3px solid var(--hazard); outline-offset: 2px; }
+  #fb { margin: 10px 0 0; font-size: 15px; line-height: 1.4; color: var(--muted); }
+  #fb:empty { display: none; }
+  #fb b { color: var(--ink); } #fb.bad b { color: var(--heat); } #fb.good b { color: var(--good); }
+  .bar { display: flex; align-items: center; gap: 10px; padding: 9px 14px 11px; background: var(--bar); color: var(--bar-ink);
+    padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px)); border-top: 6px solid transparent;
+    border-image: repeating-linear-gradient(-45deg, var(--hazard) 0 12px, #1C2024 12px 24px) 6; }
+  .bar button { min-height: 44px; min-width: 64px; font: 800 16px "Archivo", "IBM Plex Sans Thai", Arial, sans-serif; font-stretch: 90%; background: var(--hazard); color: #1C2024; border: 0; border-radius: 3px; padding: 11px 20px; cursor: pointer; }
+  .bar button.ghost { background: transparent; color: var(--bar-ink); box-shadow: inset 0 0 0 2px #6B747D; }
+  .bar button:disabled { opacity: .35; cursor: default; }
+  .bar .msg { flex: 1; font-size: 13px; color: #A9AFB5; text-align: center; }
+
+  .status { white-space: nowrap; flex: none; font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 2px; margin-left: auto; margin-right: 8px; }
+  .status:empty { display: none; }
+  .status.go { background: var(--hazard); color: #1C2024; }
+  .status.ok { background: var(--good-bg); color: #fff; }
+  #card.done { border-color: var(--good); box-shadow: inset 0 0 0 3px var(--good); }
+  #card.done::before { background: var(--good); }
+  #card.done #task { color: var(--muted); }
+  .donebadge { display: flex; align-items: center; gap: 10px; position: absolute; left: 50%; top: 50%; z-index: 3; transform: translate(-50%, -50%) scale(.6); opacity: 0; pointer-events: none;
+    background: var(--good-bg); color: #fff; font: 900 30px "Archivo", "IBM Plex Sans Thai", Arial, sans-serif; font-stretch: 88%; padding: 14px 26px; border-radius: 6px; }
+  .donebadge.show { animation: done 1.6s ease forwards; }
+  @keyframes done { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+    25% { transform: translate(-50%, -50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
+  .bar button.ready { animation: pulse 1.3s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(242, 183, 5, .35); } }
+  .big.mat { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; min-width: 0; flex: 1 1 calc(50% - 8px); padding: 10px 12px; }
+  .big.mat b { font-size: 17px; } .big.mat small { font: 600 13px "Archivo", "IBM Plex Sans Thai", Arial, sans-serif; opacity: .85; line-height: 1.25; }
+  .scen { display: flex; flex-direction: column; gap: 8px; }
+  .segs { display: flex; gap: 6px; }
+  .segs button { flex: 1; font: 800 14px "Archivo", "IBM Plex Sans Thai", Arial, sans-serif; font-stretch: 90%; padding: 10px 6px; border: 2px solid var(--ink); background: transparent; color: var(--ink); border-radius: 3px; cursor: pointer; }
+  .segs button.on { background: var(--ink); color: var(--bg); }
+  .segs button:disabled { opacity: .5; }
+  .scT { margin: 0; font-size: 14px; line-height: 1.4; min-height: 3.6em; }
+  @media (prefers-reduced-motion: reduce) { .donebadge.show { animation: none; opacity: 0; } .bar button.ready { animation: none; } }
+
+  .cpanel { flex: 1 1 100%; display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; position: relative;
+    background: linear-gradient(180deg, #535A62, #3A3F45); border: 2px solid #1C2024; border-radius: 6px; padding: 14px 16px 14px 14px; color: #E9E7E2;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 3px 0 #1C2024; transition: opacity .4s ease; }
+  .cpanel::before, .cpanel::after { content: ""; position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #23272B; box-shadow: inset 0 1px 0 rgba(255,255,255,.25); top: 7px; }
+  .cpanel::before { left: 7px; } .cpanel::after { right: 7px; }
+  .cpanel.off { opacity: .5; }
+  .bezel { width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center;
+    background: repeating-conic-gradient(#F2B705 0 15deg, #1C2024 15deg 30deg); box-shadow: 0 0 0 3px #1C2024; }
+  .mush { width: 88px; height: 88px; border-radius: 50%; border: 3px solid #1C2024; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
+    background: radial-gradient(circle at 36% 30%, #FF8A66, #D9480F 52%, #8A2A07); color: #fff; font: 900 15px "Archivo", "IBM Plex Sans Thai", Arial, sans-serif; letter-spacing: .5px;
+    box-shadow: 0 7px 0 #5A1A04, 0 9px 12px rgba(0,0,0,.45), inset 0 -5px 10px rgba(0,0,0,.25); transform: translateY(-4px); transition: transform .06s, box-shadow .06s; }
+  .mush.pressed { transform: translateY(3px); box-shadow: 0 1px 0 #5A1A04, 0 2px 4px rgba(0,0,0,.45), inset 0 -2px 6px rgba(0,0,0,.3); }
+  .mush:disabled { filter: grayscale(.6) brightness(.8); cursor: default; }
+  .mush:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+  .cp-plate { display: inline-flex; gap: 8px; align-items: baseline; background: #D9D6CF; color: #1C2024; font: 800 14px "Archivo", "IBM Plex Sans Thai", Arial, sans-serif; font-stretch: 88%;
+    padding: 4px 10px; border-radius: 2px; box-shadow: inset 0 0 0 1px #8F8B81; }
+  .cp-plate span { font-weight: 600; color: #555B61; font-size: 12px; }
+  .lamps { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+  .lamp { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #C9CDD1; }
+  .lamp i { width: 13px; height: 13px; border-radius: 50%; background: #23272B; box-shadow: inset 0 1px 2px rgba(0,0,0,.6), 0 0 0 2px #2A2F35; }
+  .lamp.on i { background: #4FBF85; box-shadow: 0 0 10px #4FBF85, 0 0 0 2px #2A2F35; }
+  .lamp.amb.on i { background: #F2B705; box-shadow: 0 0 10px #F2B705, 0 0 0 2px #2A2F35; }
+  .cp-hint { margin-top: 8px; font-size: 12px; color: #A9AFB5; }
+  .success { flex: 1 1 100%; display: flex; align-items: center; gap: 14px; background: var(--good-bg); color: #fff; border-radius: 6px; padding: 16px; animation: pop .45s ease; }
+  .success .tick { width: 52px; height: 52px; flex: none; border-radius: 50%; background: #fff; color: var(--good-bg); display: grid; place-items: center; }
+  .success .tick svg, .donebadge svg { display: block; }
+  .success b { display: block; line-height: 1.35; font-size: 20px; font-weight: 800; font-stretch: 88%; } .success span { display: block; line-height: 1.5; font-size: 14px; opacity: .92; margin-top: 2px; }
+  @keyframes pop { 0% { transform: scale(.85); opacity: 0; } 60% { transform: scale(1.03); opacity: 1; } 100% { transform: scale(1); } }
+  .tag.full { background: var(--good-bg); border-color: var(--good-bg); color: #fff; font-size: 16px; padding: 6px 12px; }
+  @media (prefers-reduced-motion: reduce) { .success, .cpanel.shakebtn, .big.shakebtn, .tag.pick.no { animation: none; } }
+
+  .lcd { margin-top: 8px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; background: #16231C; border: 2px solid #1C2024;
+    border-radius: 3px; padding: 4px 10px; box-shadow: inset 0 2px 6px rgba(0,0,0,.6); }
+  .lcd-l { font-size: 12px; font-weight: 700; color: #6FB98F; }
+  .lcd-v { font-family: "Big Shoulders Stencil Display", "Courier New", monospace; font-size: 22px; color: #8CF5B5; text-shadow: 0 0 6px rgba(140,245,181,.6); }
+  .lamp.hot.on i { background: #F06A2C; box-shadow: 0 0 10px #F06A2C, 0 0 0 2px #2A2F35; }
+  .tag.lg { font-size: 16px; padding: 6px 12px; }
+
+  .lesson { margin: 0 0 8px; font-size: clamp(17px, 1.6vw, 20px); line-height: 1.55; font-weight: 600; color: var(--ink); }
+  .lesson:empty { display: none; }
+  #task.minor { font-size: 14px; font-weight: 500; color: var(--muted); padding-left: 10px; border-left: 3px solid var(--hazard); }
+  #card.done #task.minor { opacity: .7; }
+  .thresh { display: flex; align-items: center; gap: 8px; align-self: flex-start; padding: 5px 10px 5px 8px; border-radius: 3px; border: 2px dashed var(--line);
+    font-size: 13px; color: var(--muted); transition: background .3s, color .3s, border-color .3s, box-shadow .3s; }
+  .thresh b { font-family: "Big Shoulders Stencil Display", "Archivo", "IBM Plex Sans Thai", sans-serif; font-size: 18px; color: var(--ink); }
+  .th-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+  .thresh.on { background: var(--heat-bg); border: 2px solid var(--heat-bg); color: #fff; box-shadow: 0 0 0 4px rgba(194, 65, 12, .25), 0 0 18px rgba(240, 106, 44, .6); animation: thglow 1.2s ease-in-out infinite; }
+  .thresh.on b { color: #fff; } .thresh.on .th-dot { background: #FFE2C2; box-shadow: 0 0 8px #FFE2C2; }
+  @keyframes thglow { 50% { box-shadow: 0 0 0 7px rgba(194, 65, 12, .15), 0 0 26px rgba(240, 106, 44, .8); } }
+  .meter.hot .fl { background: linear-gradient(90deg, var(--heat), #FF9A3C) !important; box-shadow: 0 0 10px rgba(240, 106, 44, .8); }
+  .meter.hot .mk { background: #FF9A3C; box-shadow: 0 0 6px #FF9A3C; }
+  .lcd.hot { background: #2A1408; } .lcd.hot .lcd-v { color: #FFB27A; text-shadow: 0 0 8px rgba(255, 140, 60, .8); } .lcd.hot .lcd-l { color: #E8935C; }
+  @media (prefers-reduced-motion: reduce) { .thresh.on { animation: none; } }
+
+  .lcd2 .lcd-v2 { font-family: "Big Shoulders Stencil Display", "Courier New", monospace; font-size: 22px; color: #8CF5B5; text-shadow: 0 0 6px rgba(140,245,181,.6); }
+  .lcd2 { margin-top: 6px; }
+  .thresh.cool.on { background: var(--good-bg); border-color: var(--good-bg); box-shadow: 0 0 0 4px rgba(47, 138, 91, .25), 0 0 18px rgba(79, 191, 133, .6); animation: none; }
+  .meter.cool .fl { background: linear-gradient(90deg, #4A9AD6, var(--good)) !important; }
+  .cpanel.fail { box-shadow: inset 0 0 0 3px var(--heat), 0 3px 0 #1C2024; }
+  .cp-reset { min-height: 44px; margin-top: 8px; font: 800 13px "Archivo", "IBM Plex Sans Thai", Arial, sans-serif; background: #D9D6CF; color: #1C2024; border: 2px solid #1C2024; border-radius: 3px; padding: 7px 12px; cursor: pointer; }
+  .cpanel.shakebtn { animation: shake .35s ease; }
+  .selector { margin-top: 8px; display: flex; gap: 8px; background: #23272B; padding: 4px; border-radius: 4px; box-shadow: inset 0 2px 5px rgba(0,0,0,.6); }
+  .selector button { min-height: 44px; flex: 1; display: flex; justify-content: center; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px; border: 0; border-radius: 3px; cursor: pointer;
+    background: linear-gradient(180deg, #5C636B, #444A51); color: #E9E7E2; font: 800 13px "Archivo", "IBM Plex Sans Thai", Arial, sans-serif; box-shadow: 0 2px 0 #15181B; }
+  .selector button span { font-size: 12px; font-weight: 600; color: #B8BEC4; }
+  .selector button.on { background: linear-gradient(180deg, #F7C93A, #E0A800); color: #1C2024; box-shadow: inset 0 2px 3px rgba(0,0,0,.35); }
+  .selector button.on span { color: #3B3000; }
+  .selector button:focus-visible, .cp-reset:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+  .recipe { border: 2px solid var(--ink); border-radius: 4px; padding: 8px 10px; background: rgba(255,255,255,.35); }
+  .rec-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; }
+  .rec-n { font-family: "Big Shoulders Stencil Display", "Archivo", sans-serif; font-size: 18px; }
+  .rec-body { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .slots { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .slot { height: 34px; border: 2px dashed var(--line); border-radius: 3px; display: grid; place-items: center; font: 800 13px "Archivo", sans-serif; color: #1C2024; }
+  .slot.fill { border: 2px solid #1C2024; background: radial-gradient(circle at 30% 30%, #fff8, transparent 60%), var(--c); animation: pop .35s ease; }
+  .cprev { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; color: var(--muted); min-width: 52px; }
+  .cs { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--ink); transition: background .5s ease; }
+  .cs.empty { background: transparent !important; border-style: dashed; border-color: var(--line); }
+  .chem { margin-top: 8px; display: grid; gap: 4px; }
+  .crow { display: grid; grid-template-columns: 52px 1fr 48px; gap: 8px; align-items: center; font-size: 12px; font-weight: 700; }
+  .crow em { font-style: normal; font-size: 12px; color: var(--muted); }
+  .ctr { height: 8px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .ctr i { display: block; height: 100%; width: 0; background: var(--ink); transition: width .6s cubic-bezier(.3,.9,.3,1); }
+  .crow.ca i { background: #8A8F96; } .crow.si i { background: #C9A85A; } .crow.al i { background: #6E8FA6; } .crow.fe i { background: var(--good-bg); }
+  .crow.fe.bad i { background: var(--heat-bg); } .crow.fe.bad em { color: var(--heat); font-weight: 800; }
+  .lab { flex: 1 1 100%; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; transition: opacity .4s; }
+  .lab.off { opacity: .45; }
+  .mtile { position: relative; min-height: 64px; display: grid; grid-template-columns: 40px minmax(0, 1fr); row-gap: 4px; align-items: center; gap: 8px; padding: 8px 8px; text-align: left;
+    background: var(--panel); border: 2px solid var(--ink); border-radius: 4px; color: var(--ink); cursor: pointer; font: 700 16px "Archivo", "IBM Plex Sans Thai", sans-serif; }
+  .mtile .sw { width: 40px; height: 40px; border-radius: 50% 44% 52% 40%; border: 2px solid #1C2024;
+    background: radial-gradient(circle at 30% 28%, rgba(255,255,255,.75), transparent 45%), radial-gradient(circle at 70% 75%, rgba(0,0,0,.18), transparent 50%), var(--c);
+    box-shadow: inset -3px -4px 0 rgba(0,0,0,.12); }
+  .mtile .nm { display: flex; flex-direction: column; line-height: 1.25; font-size: 15px; }
+  .mtile .nm small { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--heat); margin-top: 2px; }
+  .mtile .sy { font: 800 13px "Archivo", sans-serif; white-space: nowrap; min-width: 34px; height: 30px; padding: 0 6px; border-radius: 3px; background: #23272B; color: #F2B705; display: grid; place-items: center; }
+  .mtile.on { box-shadow: 0 0 0 3px var(--hazard); }
+  .mtile.added { background: var(--good-bg); border-color: var(--good-bg); color: #fff; }
+  .mtile.added .sy { background: #fff; color: var(--good-bg); }
+  .mtile .sw { grid-row: span 2; }
+  .mtile .sy { grid-column: 2; justify-self: start; height: 24px !important; }
+  .mtile.warn { grid-column: 1 / -1; border-style: dashed; border-color: var(--heat); background: repeating-linear-gradient(-45deg, transparent 0 10px, rgba(194,65,12,.06) 10px 20px), var(--panel); }
+  .mtile.warn .sy { background: var(--heat-bg); color: #fff; }
+  .mtile:focus-visible { outline: 3px solid var(--hazard); outline-offset: 2px; }
+  .detail { flex: 1 1 100%; border: 2px solid var(--ink); border-radius: 4px; padding: 12px; background: #fff6; }
+  .detail.warn { border-color: var(--heat); }
+  .d-head { display: flex; gap: 12px; align-items: center; }
+  .d-sym { min-width: 64px; height: 64px; padding: 0 8px; display: grid; place-items: center; border-radius: 4px; background: #23272B; color: #F2B705;
+    font: 900 26px "Archivo", sans-serif; }
+  .detail.warn .d-sym { background: var(--heat-bg); color: #fff; }
+  .d-head b { display: block; font-size: 18px; line-height: 1.3; }
+  .d-gives { display: block; font-size: 16px; font-weight: 700; line-height: 1.4; }
+  .d-role { display: block; font-size: 14px; color: var(--muted); line-height: 1.4; }
+  .detail.warn .d-gives { color: var(--heat); }
+  .chain { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .ch { font-size: 13px; font-weight: 700; padding: 4px 8px; border-radius: 3px; background: var(--line); color: var(--ink); opacity: .35; }
+  .arr { color: var(--muted); font-weight: 700; }
+  .detail.play .ch { animation: chlight .4s ease forwards; animation-delay: calc(var(--k) * .45s + .1s); }
+  .detail.play .ch:last-child { --fin: 1; }
+  @keyframes chlight { to { opacity: 1; background: #23272B; color: #F2B705; } }
+  .detail.warn.play .ch { animation-name: chwarn; }
+  @keyframes chwarn { to { opacity: 1; background: var(--heat-bg); color: #fff; } }
+  .why { margin-top: 10px; font-size: 14px; }
+  .why summary { cursor: pointer; font-weight: 700; min-height: 32px; display: flex; align-items: center; }
+  .why p { margin: 4px 0 0; line-height: 1.55; color: var(--muted); }
+  .d-act { margin-top: 10px; display: flex; }
+  .in-mix { font-size: 14px; font-weight: 700; color: var(--good); }
+  @media (prefers-reduced-motion: reduce) { .detail.play .ch { animation-duration: 0s; animation-delay: 0s; } .slot.fill { animation: none; } }
+
+  .fe-prev { margin-top: 10px; display: flex; align-items: center; gap: 10px; font-size: 15px; }
+  .fe-prev .cs { width: 40px; height: 40px; }
+  .why summary { list-style: none; } .why summary::-webkit-details-marker { display: none; }
+  .why summary::before { content: "+"; display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 6px; border: 2px solid var(--ink); border-radius: 50%; font-weight: 800; }
+  .why[open] summary::before { content: "–"; }
+
+  .cmp { display: flex; flex-direction: column; gap: 8px; }
+  .cmp-vis { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; }
+  .cmp-vis figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 6px; border: 2px solid var(--line); border-radius: 4px; background: rgba(255,255,255,.35); }
+  .cmp-vis figure.after { border-color: var(--ink); }
+  .cmp-vis figcaption { font-size: 12px; font-weight: 800; color: var(--muted); }
+  .cmp-vis figure b { font-size: 15px; }
+  .cmp-vis svg { width: 100%; max-width: 120px; height: auto; }
+  .cmp-mid { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .cmp-mid span { font-size: 12px; font-weight: 700; background: #23272B; color: #F2B705; padding: 2px 6px; border-radius: 2px; white-space: nowrap; }
+  .cmp-mid i { font-style: normal; font-weight: 900; font-size: 18px; }
+  .cmp-rows { display: grid; gap: 4px; }
+  .cr { display: grid; grid-template-columns: 62px 1fr 1fr; gap: 6px; align-items: center; font-size: 13px; line-height: 1.4; }
+  .cr .k { font-weight: 800; color: var(--muted); }
+  .cr .b { color: var(--muted); }
+  .cr .a { font-weight: 700; color: var(--ink); }
+  .wbar { display: block; height: 8px; width: var(--w); background: var(--line); border-radius: 2px; margin-bottom: 2px; }
+  .cr .a .wbar { background: var(--ink); }
+  .cmp-note { margin: 0; font-size: 13px; line-height: 1.5; padding-left: 10px; border-left: 3px solid var(--heat); }
+
+  .cmp { gap: 12px !important; padding-bottom: 6px; }
+  .cmp-vis { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+  .cmp-vis figure b { font-size: 14px; }
+  .tline { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); position: relative; }
+  .tline::before { content: ""; position: absolute; left: 12.5%; right: 12.5%; top: 9px; height: 3px; background: var(--ink); }
+  .tline li { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 24px; gap: 1px; }
+  .tline li::before { content: ""; position: absolute; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--panel); border: 3px solid var(--ink); }
+  .tline li.hot::before { background: var(--heat-bg); border-color: var(--heat-bg); }
+  .tline li:not(:last-child)::after { content: ""; position: absolute; top: 5px; right: -5px; border: 5px solid transparent; border-left: 7px solid var(--ink); }
+  .tline b { font-size: 13px; font-weight: 800; line-height: 1.25; }
+  .tline span { font-size: 12px; color: var(--muted); line-height: 1.3; }
+  .tline li.hot span { color: var(--heat); font-weight: 700; }
+  .ctab { display: flex; flex-direction: column; gap: 6px; }
+  .ct-h, .ct-r { display: grid; grid-template-columns: 74px 1fr 1fr; gap: 10px; align-items: center; }
+  .ct-h span { font-size: 12px; font-weight: 800; color: var(--muted); }
+  .ct-h span:last-child { color: var(--ink); }
+  .ct-r { padding: 9px 10px; border-radius: 4px; background: rgba(255,255,255,.45); border: 1px solid var(--line); }
+  .ct-r .k { font-size: 13px; font-weight: 800; color: var(--ink); }
+  .ct-r .b { font-size: 14px; color: var(--muted); line-height: 1.4; }
+  .ct-r .a { font-size: 14px; font-weight: 700; color: var(--ink); line-height: 1.4; padding-left: 10px; border-left: 3px solid var(--good-bg); }
+  .ct-r .wbar { display: block; height: 8px; width: var(--w); border-radius: 2px; margin-bottom: 4px; background: var(--line); }
+  .ct-r .a .wbar { background: var(--ink); }
+  .ct-note { margin: 2px 0 0; font-size: 13px; line-height: 1.5; color: var(--heat); font-weight: 600; }
+  .co2box { border: 2px solid var(--ink); border-radius: 6px; padding: 12px; background: #23272B; color: #E9E7E2; }
+  .co2box h2 { margin: 0 0 10px; font-size: 18px; font-weight: 800; line-height: 1.3; }
+  .co2bar { display: flex; height: 16px; border-radius: 3px; overflow: hidden; }
+  .co2bar .p { background: #E8622A; } .co2bar .f { background: #9AA1A8; }
+  .co2stats { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .co2stats .st { display: flex; flex-direction: column; gap: 1px; padding-left: 10px; border-left: 4px solid; }
+  .co2stats .st.p { border-color: #E8622A; } .co2stats .st.f { border-color: #9AA1A8; }
+  .co2note { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: #B8BEC4; }
+  .co2stats b { font-family: "Big Shoulders Stencil Display", "Archivo", sans-serif; font-size: 26px; line-height: 1.05; }
+  .co2stats .st.p b { color: #FF9466; }
+  .co2stats .en { font-size: 13px; font-weight: 800; }
+  .co2stats span:last-child { font-size: 12px; color: #B8BEC4; line-height: 1.35; }
+  .handoff { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px 12px 16px; border-radius: 6px; background: #FFF4CC; color: #1C2024;
+    border: 2px solid #1C2024; box-shadow: inset 6px 0 0 var(--hazard); margin-bottom: 4px; }
+  .handoff b { font-size: 16px; line-height: 1.35; } .handoff span { font-size: 13px; line-height: 1.45; color: #3B4148; }
+
+  .ba { position: relative; display: grid; grid-template-columns: 1fr 1fr; border: 2px solid var(--ink); border-radius: 6px; overflow: hidden; background: rgba(255,255,255,.5); }
+  .ba-h { padding: 7px 12px; font-size: 15px; font-weight: 800; letter-spacing: .2px; }
+  .ba-h.b { background: #D9D6CF; color: #1C2024; }
+  .ba-h.a { background: #23272B; color: #fff; }
+  .ba-img { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 12px 10px; }
+  .ba-img svg { max-width: 150px; height: 74px; }
+  .ba-img b { font-size: 15px; line-height: 1.3; }
+  .ba-img.b b { color: var(--muted); }
+  .ba-c { padding: 8px 12px; font-size: 14px; line-height: 1.45; border-top: 1px solid var(--line); }
+  .ba-c.b { color: var(--muted); }
+  .ba-c.a { color: var(--ink); font-weight: 700; }
+  .ba-img.a, .ba-c.a, .ba-h.a { border-left: 2px solid var(--ink); }
+  .ba-c .wbar { display: block; height: 8px; width: var(--w); border-radius: 2px; margin-bottom: 4px; background: #B5B2AB; }
+  .ba-c.a .wbar { background: var(--ink); }
+  .ba-arrow { position: absolute; left: 50%; top: 82px; transform: translate(-50%, 0); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--hazard); color: #1C2024; border: 2px solid #1C2024; }
+
+  .poe { flex: 1 1 100%; border: 2px dashed var(--ink); border-radius: 6px; padding: 12px; background: rgba(242,183,5,.12); }
+  .poe.locked { border-style: solid; background: rgba(255,255,255,.35); }
+  .poe-tag { display: inline-block; font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 2px; background: var(--hazard); color: #1C2024; }
+  .poe-q { margin: 8px 0 10px; font-size: 16px; font-weight: 700; line-height: 1.5; }
+  .poe-opts, .calc-o { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .poe-o { min-height: 44px; font: 700 15px "Archivo", "IBM Plex Sans Thai", sans-serif; border: 2px solid var(--ink); border-radius: 4px; background: var(--panel); color: var(--ink); cursor: pointer; padding: 6px; }
+  .poe-o.on { background: var(--ink); color: var(--bg); opacity: 1; }
+  .poe-o:disabled:not(.on) { opacity: .4; }
+  .poe-o.wrong { border-color: var(--heat); color: var(--heat); }
+  .poe-o:focus-visible, .mopt:focus-visible { outline: 3px solid var(--hazard); outline-offset: 2px; }
+  .poe-res { flex: 1 1 100%; border-radius: 6px; padding: 12px; border: 2px solid; animation: pop .45s ease; }
+  .poe-res.ok { border-color: var(--good-bg); background: rgba(37,116,76,.08); } .poe-res.no { border-color: var(--heat-bg); background: rgba(184,60,10,.07); }
+  .poe-res > b { font-size: 16px; } .poe-res.ok > b { color: var(--good); } .poe-res.no > b { color: var(--heat); }
+  .poe-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .poe-cmp span { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; }
+  .poe-cmp em { font-style: normal; font-size: 16px; font-weight: 800; color: var(--ink); }
+  .poe-res p { margin: 8px 0 0; font-size: 14px; line-height: 1.55; }
+  .chart { border: 2px solid var(--ink); border-radius: 4px; padding: 8px 10px 4px; background: rgba(255,255,255,.5); }
+  .ch-h { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+  .ch-h b { font-weight: 800; } .ch-n { font-family: "Big Shoulders Stencil Display", "Archivo", sans-serif; font-size: 15px; }
+  .chart svg { display: block; width: 100%; height: auto; }
+  .chart .ax { stroke: var(--ink); stroke-width: 1.5; } .chart .th { stroke: var(--heat); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  .chart .tk { font: 600 10px "Archivo", sans-serif; fill: var(--muted); } .chart .tk.hot { fill: var(--heat); font-weight: 800; }
+  .chart .lb { font: 600 10px "IBM Plex Sans Thai", "Archivo", sans-serif; fill: var(--muted); }
+  .chart .ln { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; } .chart .dt { fill: var(--heat-bg); stroke: #fff; stroke-width: 1.5; }
+  .chart .ann { font: 800 11px "IBM Plex Sans Thai", "Archivo", sans-serif; fill: var(--heat); }
+  .meas { flex: 1 1 100%; display: grid; gap: 8px; }
+  .mopt { min-height: 52px; display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 10px; border: 2px solid var(--ink); border-radius: 4px;
+    background: var(--panel); color: var(--ink); cursor: pointer; font: 600 15px "Archivo", "IBM Plex Sans Thai", sans-serif; line-height: 1.4; }
+  .mopt .mk { flex: none; width: 30px; height: 30px; border-radius: 3px; display: grid; place-items: center; background: #23272B; color: #F2B705; font: 800 15px "Archivo", sans-serif; }
+  .mopt.on.good { background: var(--good-bg); border-color: var(--good-bg); color: #fff; } .mopt.on.good .mk { background: #fff; color: var(--good-bg); }
+  .mopt.on.half { box-shadow: inset 0 0 0 2px var(--hazard); } .mopt.on.half .mk { background: var(--hazard); color: #1C2024; }
+  .mopt.on.bad { border-color: var(--heat); } .mopt.on.bad .mk { background: var(--heat-bg); color: #fff; }
+  .meas.solved .mopt:not(.good) { opacity: .45; }
+  .calc { flex: 1 1 100%; border: 2px solid var(--ink); border-radius: 6px; padding: 12px; background: linear-gradient(180deg, #535A62, #3A3F45); color: #E9E7E2; }
+  .calc-h { font-size: 13px; font-weight: 800; }
+  .scales { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .scales .lcd { margin-top: 8px; flex-direction: column; align-items: flex-start; gap: 0; }
+  .scales .lcd-v { font-size: 22px; white-space: nowrap; }
+  .calc-q { margin: 12px 0 8px; font-size: 15px; font-weight: 700; line-height: 1.5; }
+  .calc .poe-o { background: #D9D6CF; color: #1C2024; border-color: #1C2024; }
+  .calc .poe-o.on { background: var(--good-bg); color: #fff; border-color: var(--good-bg); }
+  .calc .poe-o.wrong { background: #F3D3C4; color: #8A2A07; }
+  @media (prefers-reduced-motion: reduce) { .poe-res { animation: none; } }
+
+  .method { flex: 1 1 100%; border: 2px solid var(--ink); border-radius: 6px; padding: 12px; background: rgba(255,255,255,.45); }
+  .mflow { margin-top: 10px; display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 6px; align-items: center; }
+  .mflow span { display: flex; flex-direction: column; gap: 2px; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); min-height: 64px; justify-content: center; }
+  .mflow span.hl { border: 2px solid var(--heat-bg); }
+  .mflow b { font-size: 14px; line-height: 1.3; } .mflow span.hl b { color: var(--heat); }
+  .mflow small { font-size: 12px; color: var(--muted); line-height: 1.35; }
+  .mflow i { font-style: normal; font-weight: 800; font-size: 20px; }
+  .method p { margin: 10px 0 0; font-size: 14px; line-height: 1.55; }
+
+  .scalep { grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .scalep .sc { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .scalep .sc .lcd { width: 100%; margin-top: 0; flex-direction: column; align-items: flex-start; gap: 0; }
+  .scalep .lcd-v { font-size: 22px; white-space: nowrap; }
+  .mush.sm { width: 64px; height: 64px; font-size: 14px; }
+  .sc-diff { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 8px 12px; border-radius: 3px;
+    background: #2A1408; border: 2px solid #1C2024; color: #E8935C; font-size: 13px; font-weight: 700; }
+  .sc-diff b { font-family: "Big Shoulders Stencil Display", "Courier New", monospace; font-size: 26px; color: #FFB27A; text-shadow: 0 0 8px rgba(255,140,60,.7); }
+  .scalep.solved .sc-diff { animation: pop .45s ease; }
+  .success .ok-note { display: block; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.35); font-size: 12px; line-height: 1.5; opacity: .9; }
+
+  .ex { margin-top: 10px; }
+  .ex-l { display: block; font-size: 12px; font-weight: 800; color: var(--muted); margin-bottom: 5px; }
+  .ex-c { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ex-c span { font-size: 13px; font-weight: 600; padding: 4px 9px; border-radius: 999px; border: 1.5px solid var(--ink); background: var(--panel); line-height: 1.35; }
+  .detail.warn .ex-c span { border-color: var(--heat); color: var(--heat); }
+
+  .lego .eqn { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 4px 0 8px; }
+  .lego .side, .lego .part { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .lego .pair { display: flex; align-items: flex-start; gap: 8px; }
+  .lego .plus, .lego .arrow { font: 800 22px "Archivo", sans-serif; color: var(--ink); }
+  .lego .plus { margin-top: 10px; }
+  .lego .arrow small { font-size: 12px; color: var(--heat); font-weight: 700; }
+  .mol { display: flex; align-items: flex-end; gap: 2px; min-height: 40px; }
+  .brick { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: calc(var(--w) * 1.5px + 6px);
+    height: 30px; margin-top: 6px; border-radius: 3px; border: 1.5px solid rgba(0,0,0,.45); color: #fff; box-shadow: inset 0 -3px 0 rgba(0,0,0,.18); }
+  .brick::before { content: ""; position: absolute; top: -6px; left: 4px; right: 4px; height: 6px;
+    background: radial-gradient(circle at 6px 6px, var(--bc) 4.5px, transparent 5px) 0 0 / 13px 12px repeat-x; }
+  .brick i { font: 800 12px "Archivo", sans-serif; font-style: normal; line-height: 1; }
+  .brick em { font: 600 9px "Archivo", sans-serif; font-style: normal; opacity: .85; line-height: 1; margin-top: 2px; }
+  .brick.Ca { background: #3E9A6B; --bc: #3E9A6B; } .brick.C { background: #3A3F45; --bc: #3A3F45; } .brick.O { background: #D9480F; --bc: #D9480F; }
+  .qbrick { display: grid; place-items: center; width: 72px; height: 30px; margin-top: 6px; border: 2px dashed var(--ink); border-radius: 3px; font: 800 16px "Archivo", sans-serif; }
+  .lego .ml { font: 800 14px "Archivo", sans-serif; }
+  .lego .mw { font-size: 12px; color: var(--muted); } .lego .mw.shown { color: var(--ink); font-weight: 800; }
+  .lego .slot.filled .mol { animation: pop .4s ease; }
+  .lego .slot.away .mol { animation: floataway 1.6s ease-in-out infinite alternate; opacity: .75; }
+  @keyframes floataway { to { transform: translateY(-6px); } }
+  .legend { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.6; }
+  .legend b { color: var(--ink); margin: 0 3px; }
+  .lg-opts { margin-top: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .lg-o { min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; padding: 6px 2px; border: 2px solid var(--ink);
+    border-radius: 4px; background: var(--panel); color: var(--ink); cursor: pointer; font: 800 14px "Archivo", sans-serif; }
+  .lg-o .mol { transform: scale(.8); transform-origin: bottom center; min-height: 34px; }
+  .lg-o.on { box-shadow: 0 0 0 3px var(--good-bg); } .lg-o:disabled:not(.on) { opacity: .35; }
+  .lg-o.wrong { animation: shake .35s ease; border-color: var(--heat); }
+  .lg-o:focus-visible { outline: 3px solid var(--hazard); outline-offset: 2px; }
+  .lg-w { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 4px; }
+  .poe-opts.four { grid-template-columns: repeat(2, 1fr); }
+  @media (prefers-reduced-motion: reduce) { .lego .slot.away .mol, .lg-o.wrong, .lego .slot.filled .mol { animation: none; } }
+
+  .eqbox { flex: 1 1 100%; border: 2px solid var(--ink); border-radius: 6px; padding: 10px 12px; background: rgba(255,255,255,.5); text-align: center; }
+  .eq-l { font-size: 12px; font-weight: 800; color: var(--muted); }
+  .eq-m, .eq-w { display: grid; grid-template-columns: 1fr 28px 1fr 28px 1fr; align-items: center; justify-items: center; }
+  .eq-m { margin-top: 4px; font: 800 24px "Archivo", sans-serif; } .eq-m i { font-style: normal; color: var(--muted); }
+  .eq-m .co2 { color: var(--heat); }
+  .eq-w { font: 700 14px "Archivo", sans-serif; color: var(--muted); } .eq-w span:last-child { color: var(--heat); }
+  .eq-n { margin-top: 2px; font-size: 12px; color: var(--muted); }
+  .eq-x { margin: 8px 0 0; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 13px; line-height: 1.55; text-align: left; color: var(--ink); }
+
+  .method { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .method:empty { display: none; }
+  .m-k { font-size: 11.5px; font-weight: 800; color: var(--muted); letter-spacing: .2px; }
+  .method b { font: 800 15px "Archivo", sans-serif; color: #fff; background: #23272B; padding: 3px 9px; border-radius: 3px; }
+  .method .m-t { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .takeaway { flex: 1 1 100%; border-left: 4px solid #23272B; background: rgba(35,39,43,.06); border-radius: 0 6px 6px 0; padding: 10px 12px; animation: pop .4s ease; }
+  .takeaway p { margin: 4px 0 0; font-size: 14.5px; line-height: 1.55; font-weight: 600; }
+  .mstrip { display: flex; align-items: center; justify-content: space-between; gap: 4px; border: 2px solid var(--ink); border-radius: 6px; padding: 10px 8px; background: rgba(255,255,255,.5); }
+  .mstrip div { display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1; }
+  .mstrip b { font: 800 14px "Archivo", sans-serif; } .mstrip span { font-size: 12px; color: var(--muted); line-height: 1.3; }
+  .mstrip i { font-style: normal; color: var(--muted); font-weight: 800; }
+  .recap { border: 2px solid var(--ink); border-radius: 6px; padding: 12px; background: #23272B; color: #E9E7E2; margin-bottom: 12px; }
+  .recap .m-k { color: #F2B705; }
+  .mstrip.dark { margin-top: 8px; background: transparent; border-color: #5C636B; } .mstrip.dark b { color: #fff; } .mstrip.dark span, .mstrip.dark i { color: #B8BEC4; }
+  .recap ol { margin: 8px 0 0; padding: 0; list-style: none; counter-reset: r; display: grid; gap: 6px; }
+  .recap li { counter-increment: r; display: grid; grid-template-columns: 22px auto 1fr; gap: 8px; align-items: baseline; }
+  .recap li::before { content: counter(r); font: 800 13px "Archivo", sans-serif; color: #1C2024; background: #F2B705; border-radius: 50%; width: 20px; height: 20px; display: grid; place-items: center; }
+  .recap li b { font: 800 14px "Archivo", sans-serif; } .recap li span { font-size: 13px; color: #B8BEC4; }
+  .recap .rc-punch { margin: 12px 0 0; padding: 8px 10px; border-radius: 4px; border: 1.5px solid #F2B705; color: #F2B705; text-align: center;
+    font: 700 15px "Archivo", "IBM Plex Sans Thai", sans-serif; line-height: 1.45; }
+  .recap p { margin: 10px 0 0; font-size: 13px; line-height: 1.55; color: #D9DCDF; }
+  @media (prefers-reduced-motion: reduce) { .takeaway { animation: none; } }
+
+  .stepcard { flex: 1 1 100%; border: 2px solid var(--ink); border-radius: 6px; padding: 12px; background: rgba(255,255,255,.5); display: flex; flex-direction: column; gap: 10px; }
+  .stepcard.on { box-shadow: 0 0 0 3px var(--hazard); }
+  .stepcard .selector { margin-top: 0; }
+  .sc-h { display: flex; align-items: center; gap: 8px; }
+  .sc-h b { font-size: 15px; font-weight: 800; line-height: 1.35; }
+  .sn { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--hazard); color: #1C2024; font: 800 14px "Archivo", sans-serif; }
+  .stepcard.done1 .sc-h .sn { background: var(--good-bg); color: #fff; }
+  .sc-h.p2 { grid-column: 1 / -1; color: #E9E7E2; }
+  .cpanel.locked { opacity: .5; } .cpanel.locked .sc-h.p2 b::after { content: " (เลือกปริมาณก่อน)"; font-weight: 600; color: #B8BEC4; }
+  .mush.ready { animation: readyp 1.2s ease-in-out infinite; }
+  @keyframes readyp { 50% { box-shadow: 0 7px 0 #5A1A04, 0 0 0 8px rgba(242,183,5,.45); } }
+  @media (prefers-reduced-motion: reduce) { .mush.ready { animation: none; } }
+
+  .dots { gap: 4px !important; }
+  .dots i { width: 20px !important; height: 20px !important; border-radius: 50% !important; display: grid; place-items: center; font: 800 11px "Archivo", sans-serif; font-style: normal;
+    background: transparent !important; border: 1.5px solid var(--line); color: var(--muted); }
+  .dots i.cur { border-color: var(--ink); color: var(--ink); }
+  .dots i.on { background: var(--good-bg) !important; border-color: var(--good-bg); color: #fff; }
+  .ok-more { margin-top: 6px; } .ok-more summary { cursor: pointer; font-size: 12.5px; font-weight: 700; opacity: .9; }
+  .ok-more small { display: block; margin-top: 4px; font-size: 12px; line-height: 1.5; opacity: .9; }
+  .detail .ex-c:empty { display: none; }
+  /* simplified step 1: fewer layers of information */
+  .recipe .chem, .detail .chain, .detail .d-role, .detail .ex-l, .detail .why { display: none !important; }
+  .detail .ex { margin-top: 8px; } .detail .ex-c span { font-size: 12px; padding: 2px 8px; }
+  .detail .ex-c::before { content: "เช่น"; font-size: 12px; color: var(--muted); align-self: center; margin-right: 2px; }
+  .detail .d-sym { flex: none; min-width: 54px; height: 54px; font-size: 20px; }
+
+  .trial { flex: 1 1 100%; border: 2px solid var(--ink); border-radius: 6px; padding: 12px; background: rgba(255,255,255,.5); display: flex; flex-direction: column; gap: 10px; }
+  .trial.done1 .sn { background: var(--good-bg); color: #fff; }
+  .tr-row { display: flex; align-items: center; gap: 12px; }
+  .tr-sw { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--ink); box-shadow: inset -3px -4px 0 rgba(0,0,0,.12); }
+  .tr-r { flex: 1; font-size: 15px; line-height: 1.4; }
+  .tr-row .big { flex: none; min-width: 120px; padding: 10px 14px; font-size: 15px; }
+  .tr2h { flex: 1 1 100%; margin-top: 4px; }
+  .tr-cmp { flex: 1 1 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; animation: pop .4s ease; }
+  .tr-cmp > div { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px; border: 2px solid var(--ink); border-radius: 6px; background: rgba(255,255,255,.5); text-align: center; }
+  .tr-cmp .tr-sw { width: 48px; height: 48px; } .tr-cmp b { font-size: 15px; } .tr-cmp span:last-child { font-size: 13px; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { .tr-cmp { animation: none; } }
+  .nogl { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+  @media (max-width: 820px) {
+    #wrap { display: flex; flex-direction: column; }
+    #view { position: relative; inset: auto; flex: 0 0 40%; }
+    .lesson { font-size: 15.5px; margin-bottom: 6px; }
+    #title { font-size: 23px; }
+    #task.minor { font-size: 13px; }
+    .thresh { font-size: 12px; padding: 3px 8px; } .thresh b { font-size: 16px; }
+    .cpanel { padding: 10px 12px; gap: 12px; } .bezel { width: 92px; height: 92px; } .mush { width: 72px; height: 72px; font-size: 13px; }
+    .lcd { margin-top: 6px; } .lamps { margin-top: 6px; gap: 8px; } .cp-hint { display: none; }
+    #card { position: relative; left: auto; top: auto; width: auto; max-height: none; flex: 1; min-height: 0; margin: 0; border-width: 2px 0 0; border-radius: 0; padding: 16px 16px 14px; }
+    #card::before { left: 0; right: 0; }
+    .tag { font-size: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .tag.pick.no { animation: none; } }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="view">
+    <div id="stage" role="img" aria-label="โมเดล 3 มิติของโรงงานปูนซีเมนต์ขาวที่คุณควบคุมทีละขั้น"></div>
+    <div id="tags"></div>
+    <div class="donebadge" id="donebadge" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>เสร็จแล้ว!</span></div>
+  </div>
+  <section id="card">
+    <div class="num"><span id="num"></span><span class="status" id="status"></span><span class="dots" id="dots" aria-hidden="true"></span></div>
+    <div id="method" class="method"></div>
+    <h1 id="title"></h1>
+    <p id="lesson" class="lesson"></p>
+    <p id="task"></p>
+    <div class="hud" id="hud"></div>
+    <div class="actions" id="actions"></div>
+    <p id="fb" role="status" aria-live="polite"></p>
+  </section>
+</div>
+<div class="bar">
+  <button id="prev" class="ghost" type="button">ย้อนกลับ</button>
+  <span class="msg" id="barmsg"></span>
+  <button id="next" type="button">ถัดไป</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+"use strict";
+if (!window.THREE) { document.getElementById("view").insertAdjacentHTML("beforeend", '<div class="nogl">The 3D plant could not load. Check your connection and reload.</div>'); return; }
+
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim()||"#cccccc";
+const stage=document.getElementById("stage");
+const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches||location.hash==="#snap";
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const cam=new THREE.OrthographicCamera(-1,1,1,-1,-300,500);
+scene.add(new THREE.HemisphereLight(0xffffff,0x8a969c,.72));
+const sun=new THREE.DirectionalLight(0xffffff,.85);
+sun.position.set(30,60,26);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-70,right:70,top:55,bottom:-55,near:1,far:200});
+sun.shadow.bias=-.0008;scene.add(sun);
+
+const v=(x,y,z)=>new THREE.Vector3(x,y,z);
+const M=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.85,metalness:.05,flatShading:true},o||{}));
+const mat={
+ steel:M(0x9aa9b2),frame:M(0x5b6b75),dark:M(0x34414a),belt:M(0x46545d),
+ rock:M(0xf2f4f3),rock2:M(0xe3e8e8),rock3:M(0xd3dadb),
+ pyro:M(0xadbfca),sand:M(0xe6dcc3),feld:M(0xead6cc),white:M(0xfbfcfc),
+ pad:M(0xbfc9ce),yellow:M(0xd8a33c),water:M(0x3f86bd),fuel:M(0x6b5a4a),gyp:M(0xf5f1e6),
+ cool:M(0x7d8d96,{side:THREE.DoubleSide}),
+ zCalc:M(0x9c8c80,{side:THREE.DoubleSide}),
+ zTrans:M(0x8a5a44,{side:THREE.DoubleSide,emissive:0x2a0d04}),
+ zSint:M(0xa3401f,{side:THREE.DoubleSide,emissive:0x9a2e08}),
+ zDis:M(0x70402c,{side:THREE.DoubleSide,emissive:0x3a1206}),
+ hood:new THREE.MeshStandardMaterial({color:0x9aa9b2,transparent:true,opacity:.28,depthWrite:false,side:THREE.DoubleSide})
+};
+const box=(w,h,d)=>new THREE.BoxGeometry(w,h,d);
+const cyl=(rt,rb,h,s)=>new THREE.CylinderGeometry(rt,rb,h,s||12);
+let U=null;const pickables=[];
+function add(geo,m,x,y,z,parent){const o=new THREE.Mesh(geo,m);if(U){o.userData.unit=U;pickables.push(o);}o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;(parent||scene).add(o);return o;}
+function pathOf(pts){const p=new THREE.CurvePath();for(let i=0;i<pts.length-1;i++)p.add(new THREE.LineCurve3(v(...pts[i]),v(...pts[i+1])));return p;}
+function pipe(pts,r,m){return add(new THREE.TubeGeometry(pathOf(pts),pts.length*12,r,8,false),m||mat.steel,0,0,0);}
+function conveyor(a,b){
+  const A=v(...a),B=v(...b),len=A.distanceTo(B);
+  const g=new THREE.Group();g.position.copy(A).lerp(B,.5);
+  add(box(.9,.35,len),mat.belt,0,0,0,g);add(box(1.1,.12,len),mat.steel,0,.4,0,g);
+  scene.add(g);g.lookAt(B);
+  const n=Math.max(1,Math.floor(len/4));
+  for(let i=1;i<=n;i++){const p=A.clone().lerp(B,i/(n+1));if(p.y>.6)add(box(.22,p.y,.22),mat.frame,p.x,p.y/2,p.z);}
+}
+function pad(x,z,w,d){add(box(w,.12,d),mat.pad,x,.06,z);}
+function spinTube(a,b,r,m,parts){ // rotating cylinder between points; returns spin group
+  const A=v(...a),B=v(...b),L=A.distanceTo(B);
+  const piv=new THREE.Group();piv.position.copy(A).lerp(B,.5);
+  piv.rotation.z=Math.atan2(B.y-A.y,B.x-A.x);scene.add(piv);
+  const spin=new THREE.Group();piv.add(spin);
+  (parts||[[-L/2,L/2,m]]).forEach(([x0,x1,mm])=>{
+    const c=add(new THREE.CylinderGeometry(r,r,x1-x0,18,1,true),mm,(x0+x1)/2,0,0,spin);c.rotation.z=Math.PI/2;
+  });
+  return {spin,L,A,B};
+}
+function smallFilter(x,z,h){
+  add(box(1.8,2,1.8),mat.steel,x,h+1,z);
+  const hp=add(cyl(1.25,.25,1,4),mat.frame,x,h-.5,z);hp.rotation.y=Math.PI/4;
+  [[-.7,-.7],[.7,.7],[-.7,.7],[.7,-.7]].forEach(([a,b])=>add(box(.14,h-.4,.14),mat.frame,x+a,(h-.4)/2,z+b));
+  add(cyl(.2,.2,2.4,8),mat.dark,x+.5,h+3.2,z+.5);
+}
+
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(700,700),new THREE.MeshStandardMaterial({color:css("--ground"),roughness:1}));
+ground.rotation.x=-Math.PI/2;ground.position.set(0,0,-4);ground.receiveShadow=true;scene.add(ground);
+
+/* ---------- raw materials ---------- */
+U="quarry";
+pad(-30,10,16,14);
+const PILES=[{n:"Limestone",c:0xdcdad3,x:-37.5,good:1},
+ {n:"Al–Si source",c:0xadbfca,x:-34.5,good:1},
+ {n:"Iron (Fe)",c:0x8e3b22,x:-31.5,good:0},
+ {n:"Silica corrector",c:0xe7dcc0,x:-28.5,good:1},
+ {n:"Flux",c:0xead6cc,x:-25.5,good:1}];
+PILES.forEach(P=>{P.m=M(P.c);add(new THREE.ConeGeometry(1.25,1.7,8),P.m,P.x,.85,16.2);});
+function truck(x,z,ry,tank){
+  const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;scene.add(g);
+  add(box(3.4,.45,1.6),mat.dark,0,.75,0,g);
+  if(tank){const t=add(cyl(.8,.8,2.3,14),mat.white,-.45,1.75,0,g);t.rotation.z=Math.PI/2;}
+  else{add(box(2,1.1,1.7),mat.yellow,-.5,1.5,0,g);add(box(1.6,.5,1.4),mat.rock,-.5,2.2,0,g);}
+  add(box(.9,1.1,1.5),tank?mat.steel:mat.yellow,1.15,1.5,0,g);
+  [[-1,.8],[-1,-.8],[1,.8],[1,-.8]].forEach(([a,b])=>{const w=add(cyl(.42,.42,.35,10),mat.dark,a,.42,b,g);w.rotation.x=Math.PI/2;});
+}
+truck(-29,9.6,.35,false);
+
+/* ---------- crusher ---------- */
+U="crusher";
+pad(-18.5,10,8,7);
+add(box(4,3,4),mat.frame,-20,1.5,10);
+const hop=add(cyl(2.1,.7,1.9,4),mat.steel,-20,3.95,10);hop.rotation.y=Math.PI/4;
+const scr=add(box(2.6,.3,1.6),mat.steel,-17,1.9,10);scr.rotation.z=-.2;
+[[-17.9,1.6],[-16.1,1.1]].forEach(([x,h])=>{add(box(.2,h,.2),mat.frame,x,h/2,9.4);add(box(.2,h,.2),mat.frame,x,h/2,10.6);});
+add(box(1.4,.8,1.2),mat.dark,-17,.4,11.6);
+U="rawmill";conveyor([-15.8,1.4,10],[-11.6,5.2,6.2]);
+
+/* ---------- raw mill + silo ---------- */
+pad(-10,4,9,12);
+add(box(4,2,4),mat.frame,-10,1,6);
+add(cyl(1.8,2,2.6,10),mat.steel,-10,3.3,6);
+add(cyl(.7,1.8,1.4,10),mat.steel,-10,5.3,6);
+add(cyl(.7,.7,1,10),mat.dark,-10,6.5,6);
+pipe([[-10,7,6],[-10,8.6,6],[-10,8.6,1],[-10,7.9,1]],.28);
+add(cyl(1.7,1.7,7,16),mat.white,-10,3.5,1);
+add(cyl(.3,1.75,.8,16),mat.steel,-10,7.4,1);
+smallFilter(-13.2,7.8,3);
+U="preheater";pipe([[-8.4,1,1],[-3,1,-7.5],[-3,17.4,-7.5]],.26);
+pipe([[-3,17.4,-7.5],[-3,17.4,-3],[-1.9,16.8,-3]],.22);
+
+/* ---------- two kiln lines ---------- */
+const spins=[];const flames=[];
+function cyclone(x,y,z){add(cyl(.9,.9,1.3,12),mat.steel,x,y,z);add(cyl(.9,.22,1.6,12),mat.steel,x,y-1.45,z);}
+function kilnLine(zl){
+  U="preheater";
+  pad(0,zl,7,6);pad(10.5,zl,16,4.8);pad(22.5,zl,11,4.8);
+  [[-2.2,-2.2],[2.2,-2.2],[-2.2,2.2],[2.2,2.2]].forEach(([x,z])=>add(box(.3,17,.3),mat.frame,x,8.5,zl+z));
+  [4,7.5,11,14.5].forEach(y=>add(box(5,.18,5),mat.steel,0,y,zl));
+  add(box(5.2,.5,5.2),mat.dark,0,17.2,zl);
+  cyclone(-1.1,15.9,zl);cyclone(1.1,15.9,zl);cyclone(.8,12.6,zl);cyclone(-.8,9.1,zl);cyclone(.8,5.6,zl);
+  add(cyl(.45,.45,13,10),mat.dark,1.7,8.8,zl+1.7);
+  add(box(2,3.2,3),mat.frame,3,3.4,zl);
+  U="kiln";
+  // kiln with zones (inlet -> outlet)
+  const K=spinTube([3.9,3.4,zl],[17.6,2.8,zl],1.3,null,[]);
+  const L=K.L,x0=-L/2;
+  const zones=[[0,5.5,mat.zCalc],[5.5,9,mat.zTrans],[9,12.2,mat.zSint],[12.2,L,mat.zDis]];
+  zones.forEach(([a,b,m])=>{const c=add(new THREE.CylinderGeometry(1.3,1.3,b-a,18,1,true),m,x0+(a+b)/2,0,0,K.spin);c.rotation.z=Math.PI/2;});
+  [-4.4,0,4.4].forEach(x=>{const t=add(new THREE.TorusGeometry(1.46,.16,6,24),mat.dark,x,0,0,K.spin);t.rotation.y=Math.PI/2;
+    const p=K.A.clone().lerp(K.B,.5+x/L);add(box(1.6,p.y-1.2,2.2),mat.frame,p.x,(p.y-1.2)/2,zl);});
+  spins.push([K.spin,.5]);
+  U="cooler";
+  // hood (transparent) + burner flame
+  add(box(2,4.6,3.6),mat.hood,18.2,2.3,zl).castShadow=false;
+  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(box(2,4.6,3.6)),new THREE.LineBasicMaterial({color:0x5b6b75}));
+  edges.position.set(18.2,2.3,zl);scene.add(edges);
+  const f1=new THREE.Mesh(new THREE.ConeGeometry(.75,3,10),new THREE.MeshBasicMaterial({color:0xff7a2a}));
+  f1.rotation.z=Math.PI/2;f1.position.set(16.2,2.9,zl);scene.add(f1);
+  const f2=new THREE.Mesh(new THREE.ConeGeometry(.4,2,10),new THREE.MeshBasicMaterial({color:0xffd27a}));
+  f2.rotation.z=Math.PI/2;f2.position.set(16.7,2.9,zl);scene.add(f2);
+  const gl=new THREE.PointLight(0xff6a1f,1.3,12,2);gl.position.set(16.5,3,zl);scene.add(gl);
+  flames.push([f1,f2,gl]);
+  // rotary tube cooler, lower and continuing downstream
+  const C=spinTube([18.6,1.5,zl],[26.5,1.05,zl],.95,mat.cool);
+  [20,25].forEach(x=>{const t=add(new THREE.TorusGeometry(1.05,.12,6,20),mat.dark,x-22.55,0,0,C.spin);t.rotation.y=Math.PI/2;
+    add(box(1,.7,1.6),mat.frame,x,.35,zl);});
+  spins.push([C.spin,.9]);
+  add(box(1,1.4,1.4),mat.frame,27,.7,zl);
+  // water spray bar at the drop point
+  pipe([[18.45,3.7,zl-1.4],[18.45,3.7,zl+1.4]],.1,mat.water);
+  pipe([[18.45,3.7,zl+1.4],[18.45,5.6,zl+2.4],[21,5.6,zl+2.4],[21,0,zl+2.4]],.1,mat.water);
+  return K;
+}
+const KA=kilnLine(-3);
+
+/* ---------- kiln cutaway (shown in the kiln step) ---------- */
+U="kiln";
+const cut=new THREE.Group();KA.spin.parent.add(cut);cut.visible=false;
+(function(){
+  const L=KA.L,x0=-L/2,TS=1.54,TL=Math.PI*2-2.2;
+  const zones=[[0,5.5,mat.zCalc],[5.5,9,mat.zTrans],[9,12.2,mat.zSint],[12.2,L,mat.zDis]];
+  const brick=M(0xb05a40,{side:THREE.DoubleSide});
+  const bedM=[M(0xe3d8c8,{emissive:0x000000}),M(0xe7a672,{emissive:0x3a1404}),M(0xff6a1a,{emissive:0xc83c08}),M(0xff8a3a,{emissive:0x8a2a06})];
+  zones.forEach(([a,b,m],i)=>{
+    const len=b-a,cx=x0+(a+b)/2;
+    const sh=add(new THREE.CylinderGeometry(1.3,1.3,len,28,1,true,TS,TL),m,cx,0,0,cut);sh.rotation.z=Math.PI/2;
+    const ln=add(new THREE.CylinderGeometry(1.14,1.14,len,28,1,true,TS,TL),brick,cx,0,0,cut);ln.rotation.z=Math.PI/2;
+    // material bed: circular segment extruded along the kiln
+    const shp=new THREE.Shape();shp.absarc(0,0,1.12,-2.62,-.52,false);shp.closePath();
+    const bed=add(new THREE.ExtrudeGeometry(shp,{depth:len,bevelEnabled:false}),bedM[i],a+x0,0,0,cut);
+    bed.rotation.y=Math.PI/2;bed.position.x=x0+a;bed.rotation.x=0;
+  });
+  // cut-edge lips showing shell + lining thickness
+  [TS,TS+TL].forEach(th=>{const lip=add(box(L,.16,.05),mat.dark,0,1.22*Math.sin(th),1.22*Math.cos(th),cut);lip.rotation.x=Math.PI/2-th;});
+  [-4.4,0,4.4].forEach(x=>{const t=add(new THREE.TorusGeometry(1.46,.16,6,24,Math.PI*2),mat.dark,x,0,0,cut);t.rotation.y=Math.PI/2;});
+  // clinker nodules on the bed in the hot end
+  for(let i=0;i<70;i++){const x=x0+9+Math.random()*(L-9.3),z=(Math.random()-.5)*1.3;
+    const n=add(new THREE.IcosahedronGeometry(.07+Math.random()*.06,0),bedM[2],x,-.6+Math.random()*.06,z,cut);n.castShadow=false;}
+  // long flame from the burner along the kiln axis
+  const fl=(r,len,c,o)=>{const m=new THREE.Mesh(new THREE.ConeGeometry(r,len,16,1,true),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:o,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+    m.rotation.z=Math.PI/2;m.position.set(L/2-.2-len/2,.05,0);cut.add(m);return m;};
+  cut.userData.flames=[fl(.62,6.2,0xff5a14,.55),fl(.42,4.8,0xff9a2a,.6),fl(.22,3.2,0xfff0b0,.85)];
+  const fLight=new THREE.PointLight(0xff7a2a,0,9,2);fLight.position.set(L/2-3,0,0);cut.add(fLight);cut.userData.light=fLight;
+})();
+U=null;
+U="preheater";
+// precalciner
+add(cyl(.9,.9,8.5,12),mat.steel,.2,7.25,-7.2);
+add(cyl(.9,.5,.8,12),mat.steel,.2,2.6,-7.2);
+pipe([[.2,11.5,-7.2],[.2,12.1,-7.2],[1.8,12.1,-7.2],[1.8,6.6,-5],[.9,6.6,-3.6]],.38);
+/* flow-direction arrows (preheater step) */
+const flowCols=[];
+function arrowCol(x,z,y0,y1,dir,cols){
+  const g=new THREE.Group();scene.add(g);g.visible=false;
+  const shaft=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,y1-y0,6),new THREE.MeshBasicMaterial({color:cols[0],transparent:true,opacity:.45}));
+  shaft.position.set(x,(y0+y1)/2,z);g.add(shaft);
+  const cones=[];const n=Math.round((y1-y0)/1.6);
+  for(let i=0;i<n;i++){const m=new THREE.Mesh(new THREE.ConeGeometry(.42,.75,14),cols[i%cols.length]===0xffffff?new THREE.MeshStandardMaterial({color:0xfbfaf4,emissive:0x777770,flatShading:true}):new THREE.MeshBasicMaterial({color:cols[i%cols.length]}));
+    if(dir<0)m.rotation.z=Math.PI;m.position.set(x,y0,z);g.add(m);cones.push(m);}
+  const C={g,cones,y0,y1,dir,n};flowCols.push(C);return C;
+}
+arrowCol(2.75,-1.6,4.6,16.8,-1,[0xffffff]);
+arrowCol(2.75,-4.4,4.6,16.8,1,[0xff6a1f]);
+arrowCol(1.35,-8,3.4,11.6,1,[0xff6a1f,0xffffff]);
+/* ---------- fuel system ---------- */
+U="fuel";
+pad(23.5,-7.5,8,4);
+add(box(4,3,3),mat.fuel,22.5,1.5,-7.5);
+add(cyl(1,1,5,12),mat.steel,25.6,2.5,-7.5);add(cyl(.2,1,.6,12),mat.dark,25.6,5.3,-7.5);
+pipe([[22.5,3,-6],[22.5,3,-3],[17.7,3,-3]],.16,mat.dark);
+pipe([[20.5,4.2,-7.5],[1.1,4.2,-7.5]],.14,mat.dark);
+
+/* ---------- dust collection ---------- */
+U="dust";
+pad(8,-21,13,6);
+[4.6,6.8,9].forEach(x=>{
+  add(box(2,3,3.4),mat.steel,x,4.6,-21);
+  const h=add(cyl(1.35,.3,1.8,4),mat.frame,x,2.2,-21);h.rotation.y=Math.PI/4;
+  add(box(.18,2,.18),mat.frame,x-.8,1,-22.4);add(box(.18,2,.18),mat.frame,x+.8,1,-19.6);
+});
+add(box(7,.3,3.8),mat.dark,6.8,6.25,-21);
+add(cyl(.55,.75,18,12),mat.steel,12.4,9,-21);add(cyl(.6,.6,.5,12),mat.dark,12.4,18.2,-21);
+pipe([[1.4,17.4,-3],[1.4,18.6,-3],[1.4,18.6,-21],[3.3,18.6,-21],[3.3,5.4,-21]],.45);
+pipe([[10.1,4.6,-21],[12,4.6,-21]],.35);
+
+/* ---------- cement mill ---------- */
+U="ballmill";
+conveyor([27.4,1.4,-2.6],[30.6,4.6,8]);
+pad(34,9,14,9);
+const BM=spinTube([31,2.3,8],[37,2.3,8],1.3,mat.steel);
+[-2.4,2.4].forEach(x=>{const r=add(new THREE.TorusGeometry(1.38,.12,6,20),mat.dark,x,0,0,BM.spin);r.rotation.y=Math.PI/2;});
+spins.push([BM.spin,1.1]);
+[30.7,37.3].forEach(x=>add(box(.8,1.9,1.8),mat.frame,x,.95,8));
+const fh=add(cyl(1,.35,1.2,4),mat.steel,30.6,3.9,8);fh.rotation.y=Math.PI/4;
+add(box(1.4,1.2,1.2),mat.dark,36.4,.6,10);
+[[28,11.2,mat.gyp],[28,13.6,mat.rock]].forEach(([x,z,m])=>{add(cyl(.9,.9,2.6,12),m,x,2.9,z);add(cyl(.9,.25,.9,12),mat.steel,x,1.15,z);
+  [[-.6,-.6],[.6,.6],[-.6,.6],[.6,-.6]].forEach(([a,b])=>add(box(.12,.8,.12),mat.frame,x+a,.4,z+b));});
+conveyor([28.8,.9,12.4],[30.2,3.9,8.6]);
+smallFilter(34,12,3);
+add(box(.8,11,.8),mat.frame,38.6,5.5,8);
+conveyor([38.6,11,8],[42,11,8]);
+U="ready";
+[6.2,9.8].forEach(z=>{add(cyl(1.6,1.6,9,16),mat.white,42,4.5,z);add(cyl(.3,1.65,.8,16),mat.steel,42,9.4,z);});
+truck(45.8,8,-.3,true);
+[[45.2,12.5],[46.6,12.5],[45.9,13.9]].forEach(([x,z])=>{add(box(1.1,.15,1.1),mat.frame,x,.08,z);add(box(1,.7,1),mat.white,x,.5,z);});
+/* ================= flows ================= */
+const QA=[[-20,5,10],[-20,2.4,10],[-17.2,2.2,10],[-15.8,1.8,10],[-11.6,5.6,6.2],[-10,4.6,6],
+ [-10,7.2,6],[-10,8.6,6],[-10,8.6,1],[-10,5,1],[-8.4,1.2,1],[-3,1.2,-7.5],[-3,17.4,-7.5],[-3,17.4,-3],[-1.1,16.4,-3],
+ [.8,12.6,-3],[-.8,9.1,-3],[.2,3.4,-7.2],[.2,11.5,-7.2],[.2,12.1,-7.2],[1.8,12.1,-7.2],[1.8,6.6,-5],[.8,5.6,-3],[3.2,3.7,-3],
+ [17.6,2.85,-3],[18.4,1.6,-3],[26.5,1.05,-3],[27.4,1.5,-3],[27.4,1.8,-2.6],[30.6,5,8],[31,2.3,8],[37,2.3,8],[38.6,1.5,8],[38.6,11.4,8],[42,11.4,8],[42,9.8,8]];
+function mkPath(pts,marks){
+  const p=pathOf(pts);const cum=p.getCurveLengths();const tot=cum[cum.length-1];
+  const u={};for(const k in marks){const i=marks[k];u[k]=i===0?0:cum[i-1]/tot;}
+  return {p,u};
+}
+const idx=(arr,pt)=>arr.findIndex(q=>q[0]===pt[0]&&q[1]===pt[1]&&q[2]===pt[2]);
+const PA=mkPath(QA,{meal:idx(QA,[-10,4.6,6]),clink:idx(QA,[18.4,1.6,-3]),cem:idx(QA,[37,2.3,8])});
+
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+function heatAt(p){
+  const zl=Math.abs(p.z+3)<1.6?-3:(Math.abs(p.z+12)<1.6?-12:null);
+  if(zl!==null){
+    if(p.x>3.1&&p.x<17.7&&p.y<4.8)return .22+.78*Math.pow((p.x-3.1)/14.6,1.4);
+    if(p.x>=17.7&&p.x<18.5&&p.y<3.5)return 1;
+    if(p.x>=18.5&&p.x<19.8&&p.y<2.4)return 1-.85*(p.x-18.5)/1.3;
+    if(p.x>=19.8&&p.x<26.6&&p.y<2.4)return .15*(1-(p.x-19.8)/6.8);
+    if(p.x>-2&&p.x<3.1&&p.y>3&&p.y<16.6)return .22*(16.6-p.y)/13.6;
+  }
+  if(p.z<-6&&p.z>-8.4&&p.x>-.8&&p.x<2.2&&p.y>2&&p.y<12.5)return .3;
+  return 0;
+}
+const C={raw:[0xf6f7f6,0xadc0cb,0xe7dcc0,0xecd7cc].map(c=>new THREE.Color(c)),meal:new THREE.Color(0xf1efe6),
+ clink:new THREE.Color(0xfbfbf6),cem:new THREE.Color(0xffffff),hot:new THREE.Color(0xff5a14),
+ coke:new THREE.Color(0x3a302a),bio:new THREE.Color(0xb8925a),gas:new THREE.Color(0xb9c3c8),gasHot:new THREE.Color(0xff8a4a),
+ water:new THREE.Color(0x4a9ad6),co2:new THREE.Color(0xC2410C)};
+const tmp=new THREE.Color(),dummy=new THREE.Object3D();
+
+function makeSwarm(n,geo,matl){const m=new THREE.InstancedMesh(geo,matl,n);m.frustumCulled=false;scene.add(m);return m;}
+// material particles
+const mats=[];
+function addMat(P,n,rawAllowed){for(let i=0;i<n;i++){
+  const t=rawAllowed?(Math.random()<.55?0:1+Math.floor(Math.random()*3)):-1;
+  mats.push({P,u:i/n,j:v((Math.random()-.5)*.5,(Math.random()-.5)*.3,(Math.random()-.5)*.5),t,c:t>=0?C.raw[t]:C.meal});}}
+addMat(PA,220,true);
+const matMesh=makeSwarm(mats.length,new THREE.IcosahedronGeometry(.26,0),new THREE.MeshBasicMaterial({color:0xffffff}));
+
+// fuel particles
+const FP=[
+ {p:pathOf([[22.5,3.4,-7.5],[20.5,4.2,-7.5],[1.1,4.2,-7.5],[.2,4.6,-7.2],[.2,9.5,-7.2]]),bio:.85},
+ {p:pathOf([[22.5,3.4,-7.5],[22.5,3,-6],[22.5,3,-3],[17.2,2.9,-3]]),bio:.25}];
+const fuels=[];FP.forEach(f=>{for(let i=0;i<34;i++)fuels.push({f,u:i/34,c:Math.random()<f.bio?C.bio:C.coke});});
+const fuelMesh=makeSwarm(fuels.length,new THREE.IcosahedronGeometry(.18,0),new THREE.MeshBasicMaterial({color:0xffffff}));
+
+// process gas
+const GA=pathOf([[3.2,3.8,-3],[.4,3.2,-6.4],[.2,11.4,-7.2],[1.8,12.1,-7.2],[1.8,6.6,-5],[.8,6.8,-3],[-.8,9.8,-3],[.8,13.3,-3],[0,16.6,-3],[1.4,17.4,-3],
+ [1.4,18.6,-3],[1.4,18.6,-21],[3.3,18.6,-21],[3.3,6,-21],[10,4.6,-21],[12.4,4.6,-21],[12.4,20,-21]]);
+const gases=[];[GA].forEach(g=>{for(let i=0;i<90;i++)gases.push({g,u:i/70,j:v((Math.random()-.5)*.6,(Math.random()-.5)*.4,(Math.random()-.5)*.6)});});
+const gasMesh=makeSwarm(gases.length,new THREE.IcosahedronGeometry(.3,0),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.5,depthWrite:false}));
+
+// water spray drops
+const drops=[];[-3].forEach(zl=>{for(let i=0;i<22;i++)drops.push({zl,z:(Math.random()-.5)*2.6,o:Math.random(),x:18.45+(Math.random()-.5)*.3});});
+const dropMesh=makeSwarm(drops.length,new THREE.IcosahedronGeometry(.1,0),new THREE.MeshBasicMaterial({color:0x4a9ad6}));
+
+// steam above hoods
+const sc=document.createElement("canvas");sc.width=sc.height=64;
+const sx=sc.getContext("2d");const gr=sx.createRadialGradient(32,32,2,32,32,30);
+gr.addColorStop(0,"rgba(255,255,255,.95)");gr.addColorStop(1,"rgba(255,255,255,0)");sx.fillStyle=gr;sx.fillRect(0,0,64,64);
+const SN=50,sPos=new Float32Array(SN*3),sSeed=[];
+for(let i=0;i<SN;i++)sSeed.push({x:18.2+(Math.random()-.5)*1.4,z:-3+(Math.random()-.5)*2.4,o:Math.random()});
+const steamGeo=new THREE.BufferGeometry();steamGeo.setAttribute("position",new THREE.BufferAttribute(sPos,3));
+const steamMat=new THREE.PointsMaterial({size:24,sizeAttenuation:false,map:new THREE.CanvasTexture(sc),transparent:true,depthWrite:false,opacity:.7});
+scene.add(new THREE.Points(steamGeo,steamMat));
+
+// active ring
+const ring=new THREE.Mesh(new THREE.RingGeometry(.9,1,64),new THREE.MeshBasicMaterial({color:css("--heat"),transparent:true,opacity:.8,depthWrite:false}));
+ring.rotation.x=-Math.PI/2;ring.position.y=.16;scene.add(ring);
+let ringGoal={x:0,z:0,r:1,vis:0};
+
+/* ================= additions to the plant ================= */
+const narrowDev = Math.min(innerWidth, innerHeight) < 700;
+if (narrowDev) { renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); sun.shadow.mapSize.set(1024, 1024); }
+const fans = [20.2, 22.6, 25].map(x => { const g = new THREE.Group(); g.position.set(x, .55, -1.35); scene.add(g);
+  add(box(1.1, 1.1, .5), mat.frame, 0, 0, -.05, g);
+  const hub = new THREE.Group(); hub.position.z = .22; g.add(hub);
+  for (let i = 0; i < 4; i++) { const bl = add(box(.16, .9, .04), mat.steel, 0, 0, 0, hub); bl.rotation.z = i * Math.PI / 4 * 2 + .3; }
+  add(cyl(.12, .12, .1, 10), mat.dark, 0, 0, .27, g).rotation.x = Math.PI / 2;
+  g.visible = false; return hub; });
+const towerLight = new THREE.PointLight(0xff6a1f, 0, 28, 2); towerLight.position.set(.5, 10, -4); scene.add(towerLight);
+const millEntry = spins.find(e => e[0] === BM.spin);
+
+// crusher burst particles
+const BURST = 96; const burst = []; const burstMesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.22, 0), M(0xeceeec), BURST);
+burstMesh.frustumCulled = false; scene.add(burstMesh);
+for (let i = 0; i < BURST; i++) burst.push({ p: v(0, -50, 0), vel: v(0, 0, 0), life: 0 });
+let burstIdx = 0;
+const boundary = new THREE.Group(); boundary.visible = false; scene.add(boundary);
+(function () { const bm = new THREE.MeshBasicMaterial({ color: 0xF2B705 }); const x0 = -4, x1 = 28.5, z0 = -10.5, z1 = 2;
+  const seg = (ax, az, bx, bz) => { const L = Math.hypot(bx - ax, bz - az), n = Math.floor(L / 1.1);
+    for (let k = 0; k < n; k++) { const f = (k + .25) / n, d = new THREE.Mesh(new THREE.BoxGeometry(.6, .05, .18), bm);
+      d.position.set(ax + (bx - ax) * f, .05, az + (bz - az) * f); d.rotation.y = Math.atan2(bx - ax, bz - az) + Math.PI / 2; boundary.add(d); } };
+  seg(x0, z0, x1, z0); seg(x1, z0, x1, z1); seg(x1, z1, x0, z1); seg(x0, z1, x0, z0); })();
+let mealLevel = 0, mealShown = 0;
+const gauge = new THREE.Group(); gauge.position.set(-10 + 1.74 * Math.sin(.75), .3, 1 + 1.74 * Math.cos(.75)); gauge.rotation.y = .75; scene.add(gauge);
+add(box(.5, 6.4, .06), mat.dark, 0, 3.2, 0, gauge);
+const gaugeMat = new THREE.MeshStandardMaterial({ color: 0xF2B705, emissive: 0xF2B705, emissiveIntensity: .35 });
+const gaugeFill = new THREE.Mesh(new THREE.BoxGeometry(.36, 6.2, .08), gaugeMat); gaugeFill.position.set(0, .1, .02); gauge.add(gaugeFill);
+const fullRingMat = new THREE.MeshStandardMaterial({ color: 0x2f8a5b, emissive: 0x2f8a5b, emissiveIntensity: 0 });
+const fullRing = new THREE.Mesh(new THREE.TorusGeometry(1.78, .1, 8, 40), fullRingMat); fullRing.rotation.x = Math.PI / 2; fullRing.position.set(-10, 7.05, 1); scene.add(fullRing);
+/* belt conveyors from the pile row up into the crusher */
+conveyor([-39, .8, 14.3], [-23.4, .8, 14.3]);
+conveyor([-23.4, .8, 14.3], [-20.4, 5.7, 10.4]);
+const PS = 26, pileFlow = [];
+const pileMesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.24, 0), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .8, flatShading: true }), PILES.length * PS);
+pileMesh.frustumCulled = false; pileMesh.castShadow = true; scene.add(pileMesh);
+PILES.forEach((P, i) => {
+  P.path = pathOf([[P.x, 1.7, 16.2], [P.x, 1.25, 14.3], [-23.4, 1.25, 14.3], [-20.4, 6.15, 10.4], [-20, 5.4, 10]]);
+  P.len = P.path.getLength(); P.flow = 0; P.picked = false;
+  const col = new THREE.Color(P.c);
+  for (let k = 0; k < PS; k++) { pileFlow.push({ P, u: k / PS, j: v((Math.random() - .5) * .35, (Math.random() - .5) * .15, (Math.random() - .5) * .35) }); pileMesh.setColorAt(i * PS + k, col); }
+});
+hop.visible = false;
+let jawKick = 0;
+add(box(.42, 2.5, 2.4), mat.steel, -21.0, 4.15, 10).rotation.z = .28;
+add(box(3.2, 2.6, .18), mat.frame, -20, 4.2, 8.7);
+const jawPivot = new THREE.Group(); jawPivot.position.set(-18.9, 5.35, 10); scene.add(jawPivot);
+add(box(.42, 2.5, 2.4), mat.dark, 0, -1.2, 0, jawPivot);
+for (let i = 0; i < 5; i++) add(box(.14, .2, 2.4), mat.dark, -.26, -.2 - i * .45, 0, jawPivot);
+const flywheels = [11.45, 8.55].map(z => { const g = new THREE.Group(); g.position.set(-18.6, 3.9, z); scene.add(g);
+  const disk = add(new THREE.TorusGeometry(.85, .12, 8, 28), mat.dark, 0, 0, 0, g);
+  for (let i = 0; i < 4; i++) { const sp = add(box(1.6, .12, .1), mat.steel, 0, 0, 0, g); sp.rotation.z = i * Math.PI / 4; }
+  return g; });
+function crushBurst() { for (let n = 0; n < 12; n++) { const b = burst[burstIdx++ % BURST]; b.p.set(-20 + (Math.random() - .5) * 1.2, n % 2 ? 2.6 : 5.6, 10 + (Math.random() - .5) * 1.2);
+  b.vel.set((Math.random() - .5) * 6, 4 + Math.random() * 4, (Math.random() - .5) * 6); b.life = 1.2; } }
+
+// clinker skip with a heap of white clinker
+const BIN = v(30.5, 0, -6.6);
+(function () {
+  const skipMat = M(0xd8a33c), dk = mat.dark;
+  add(box(3.4, .14, 2.3), dk, BIN.x, .2, BIN.z);
+  add(box(3.4, 1.3, .12), skipMat, BIN.x, .9, BIN.z + 1.1); add(box(3.4, 1.3, .12), skipMat, BIN.x, .9, BIN.z - 1.1);
+  add(box(.12, 1.3, 2.3), skipMat, BIN.x + 1.65, .9, BIN.z); add(box(.12, 1.3, 2.3), skipMat, BIN.x - 1.65, .9, BIN.z);
+  [[-1.2, 1], [1.2, 1], [-1.2, -1], [1.2, -1]].forEach(([a, b]) => add(box(.25, .2, .25), dk, BIN.x + a, .07, BIN.z + b));
+})();
+const NOD = 340, nod = [];
+const nodMesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.13, 0), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .65, metalness: .15, flatShading: true }), NOD);
+nodMesh.castShadow = true; scene.add(nodMesh);
+for (let i = 0; i < NOD; i++) {
+  const x = (Math.random() - .5) * 3.1, z = (Math.random() - .5) * 2.0;
+  const top = 1.15 + .75 * Math.max(0, 1 - (x * x) / 2.6 - (z * z) / 1.1);
+  const y = .32 + Math.pow(Math.random(), .6) * (top - .32);
+  const s = .7 + Math.random() * .8;
+  nod.push({ x, y, z, s, r: Math.random() * 6 });
+  const g = .82 + Math.random() * .16; nodMesh.setColorAt(i, new THREE.Color(g, g * .995, g * .97));
+}
+let shakeT = 0;
+const beforeGroup = new THREE.Group(); beforeGroup.visible = false; scene.add(beforeGroup);
+add(box(3.4, .1, 2.3), mat.pad, 34.6, .05, -6.6, beforeGroup);
+[[0, 33.6, -7.1], [1, 35.6, -7.1], [3, 33.6, -6.0], [4, 35.6, -6.0]].forEach(([i, x, z]) => {
+  add(new THREE.ConeGeometry(.55, .8, 8), M(PILES[i].c), x, .5, z, beforeGroup); });
+
+/* ================= content ================= */
+const VIEWS = {
+ overview: { t: [4, 4, -2], s: 70, th: .72, el: .62 },
+ quarry: { t: [-29.6, 2.4, 13.4], s: 18, th: .18, el: .5 },
+ quarry2: { t: [-27, 2.6, 12.8], s: 21, th: .25, el: .5 },
+ grind: { t: [-17, 3.8, 9.2], s: 17, th: .75, el: .45 },
+ preheater: { t: [1.6, 10.5, -4.5], s: 25, th: .35, el: .3 },
+ kiln: { t: [12, 3, -3], s: 15, th: .3, el: .45 },
+ cooler: { t: [23, 2.4, -3.4], s: 13, th: .45, el: .5 },
+ ballmill: { t: [35, 4, 8.5], s: 22, th: .6, el: .5 },
+ bin: { t: [30.5, 1.0, -6.6], s: 8.5, th: .3, el: .9 }
+};
+const $ = id => document.getElementById(id);
+const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+const save = () => { try { localStorage.setItem("cementplant", JSON.stringify(G)); } catch (e) {} };
+const G = { step: 0, done: {}, rock: 0, fuel: 0 };
+try { const s = JSON.parse(localStorage.getItem("cementplant") || "null"); if (s && typeof s.step === "number") Object.assign(G, s); } catch (e) {}
+const FX = {};
+function resetFX() { Object.assign(FX, { boundary: false, gasMode: "normal", gasAmt: 1, tower: 0, flame: 0, sint: .9, spray: 0, mill: 1.1, matBoost: 0, cutaway: false }); }
+resetFX();
+
+function fb(html, kind) { const f = $("fb"); f.className = kind || ""; f.innerHTML = html || ""; }
+function meter(label, max, mark) {
+  const d = document.createElement("div"); d.className = "meter";
+  d.innerHTML = `<span>${label}</span><div class="tr"><div class="fl"></div>${mark ? `<div class="mk" style="left:${mark / max * 100}%"></div>` : ""}</div><b></b>`;
+  $("hud").appendChild(d); const fl = d.querySelector(".fl"), b = d.querySelector("b");
+  return (val, txt) => { fl.style.width = clamp(val / max, 0, 1) * 100 + "%"; b.textContent = txt; };
+}
+function chip(color) { let c = $("hud").querySelector(".chips"); if (!c) { c = document.createElement("div"); c.className = "chips"; $("hud").appendChild(c); }
+  const s = document.createElement("span"); s.className = "chip"; s.style.background = color; c.appendChild(s); return t => s.textContent = t; }
+function button(label, cls, onClick) { const b = document.createElement("button"); b.type = "button"; b.className = "big " + (cls || ""); b.textContent = label; if (onClick) b.addEventListener("click", onClick); $("actions").appendChild(b); return b; }
+function holdButton(label, onChange) {
+  const b = button(label, "hot"); let held = false; const set = x => { if (held === x) return; held = x; b.classList.toggle("held", x); onChange(x); };
+  b.addEventListener("pointerdown", e => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (x) {} set(true); });
+  ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, () => set(false)));
+  b.addEventListener("keydown", e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); set(true); } });
+  b.addEventListener("keyup", e => { if (e.key === " " || e.key === "Enter") set(false); });
+  b.addEventListener("contextmenu", e => e.preventDefault());
+  return b;
+}
+let stageTap = null;
+stage.addEventListener("pointerdown", () => { if (stageTap) stageTap(); });
+function complete(msg) {
+  const stc = STEPS[G.step];
+  if (false && stc.takeaway && !$("actions").querySelector(".takeaway")) {
+    const t = document.createElement("div"); t.className = "takeaway";
+    t.innerHTML = `<span class="m-k">สิ่งที่คุณเพิ่งทำ: ${stc.method[0]}</span><p>${stc.takeaway}</p>`;
+    setTimeout(() => { if (STEPS[G.step] === stc) $("actions").appendChild(t); }, 800); }
+  if (!G.done[G.step]) { G.done[G.step] = true; save(); buzz([20, 40, 20]);
+    if (G.step > 0) { const d = $("donebadge"); d.classList.remove("show"); void d.offsetWidth; d.classList.add("show"); } }
+  updateBar(msg); }
+
+/* tags */
+const tagLayer = $("tags"); let TAGS = [];
+function tag(text, p, cls, onPick) {
+  const el = document.createElement(onPick ? "button" : "div"); el.className = "tag " + (cls || ""); el.textContent = text;
+  if (onPick) { el.type = "button"; el.classList.add("pick"); el.addEventListener("click", e => { e.stopPropagation(); onPick(el); }); el.addEventListener("pointerdown", e => e.stopPropagation()); }
+  tagLayer.appendChild(el); const t = { el, pos: v(...p), below: (cls || "").includes("below") }; TAGS.push(t); return t;
+}
+
+function controlPanel(o) {
+  const cp = document.createElement("div"); cp.className = "cpanel";
+  cp.innerHTML = `<div class="bezel"><button type="button" class="mush" aria-label="${o.aria}">${o.label}</button></div>
+    <div class="cp-r"><div class="cp-plate">${o.plate} <span>สาย 1</span></div>
+    ${o.lcd ? '<div class="lcd"><span class="lcd-l">' + o.lcd + '</span><b class="lcd-v">--</b></div>' : ""}
+    ${o.lcd2 ? '<div class="lcd lcd2"><span class="lcd-l">' + o.lcd2 + '</span><b class="lcd-v2">--</b></div>' : ""}
+    <div class="lamps">${o.lamps.map((l, i) => `<span class="lamp ${l[1] || ""}" data-i="${i}"><i></i>${l[0]}</span>`).join("")}</div>
+    <div class="cp-hint">${o.hint}</div></div>`;
+  $("actions").appendChild(cp);
+  const mush = cp.querySelector(".mush"); let held = false;
+  const set = x => { if (held === x) return; held = x; mush.classList.toggle("pressed", x); if (o.onHold) o.onHold(x); };
+  mush.addEventListener("pointerdown", e => { e.preventDefault(); if (o.onHold) { try { mush.setPointerCapture(e.pointerId); } catch (x) {} set(true); } else { mush.classList.add("pressed"); o.onPress(); } });
+  ["pointerup", "pointercancel", "lostpointercapture", "pointerleave"].forEach(ev => mush.addEventListener(ev, () => { if (o.onHold) set(false); else mush.classList.remove("pressed"); }));
+  mush.addEventListener("keydown", e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (o.onHold) set(true); else if (!e.repeat) { mush.classList.add("pressed"); o.onPress(); } } });
+  mush.addEventListener("keyup", () => { if (o.onHold) set(false); else mush.classList.remove("pressed"); });
+  mush.addEventListener("contextmenu", e => e.preventDefault());
+  return { cp, mush, lamp: i => cp.querySelector(`.lamp[data-i="${i}"]`), lcd: t => { const v = cp.querySelector(".lcd-v"); if (v) v.textContent = t; },
+    lcd2: t => { const v = cp.querySelector(".lcd-v2"); if (v) v.textContent = t; },
+    release: () => set(false) };
+}
+function threshBadge(val, idle, active, kind) {
+  const el = document.createElement("div"); el.className = "thresh" + (kind ? " " + kind : "");
+  el.innerHTML = `<span class="th-dot"></span><b>${val}</b><span class="th-t">${idle}</span>`; $("hud").appendChild(el);
+  let state = null;
+  return on => { if (on === state) return; state = on; el.classList.toggle("on", on); el.querySelector(".th-t").textContent = on ? active : idle;
+    const m = $("hud").querySelector(".meter"); if (m) m.classList.toggle(kind === "cool" ? "cool" : "hot", on); if (on) buzz(30); };
+}
+const lerpCol = (a, b, t) => { const p = x => [1, 3, 5].map(i => parseInt(x.slice(i, i + 2), 16)); const A = p(a), B = p(b);
+  return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.max(0, Math.min(1, t))).toString(16).padStart(2, "0")).join(""); };
+function predictGate(o) {
+  const box = document.createElement("div"); box.className = "poe";
+  box.innerHTML = `<div class="poe-tag">ตั้งสมมติฐานก่อนลงมือ</div><p class="poe-q">${o.q}</p><div class="poe-opts"></div>`;
+  $("actions").appendChild(box);
+  o.opts.forEach((t, i) => { const b = document.createElement("button"); b.type = "button"; b.className = "poe-o"; b.textContent = t;
+    b.addEventListener("click", () => { S.pred = i; buzz(15);
+      box.querySelectorAll(".poe-o").forEach(x => { x.disabled = true; x.classList.toggle("on", x === b); });
+      box.classList.add("locked"); box.querySelector(".poe-tag").textContent = "สมมติฐานของคุณ";
+      o.onDone(); });
+    box.querySelector(".poe-opts").appendChild(b); });
+  return box;
+}
+function predictReveal(o) {
+  if (S.pred === undefined) return;
+  const right = S.pred === o.correct;
+  const r = document.createElement("div"); r.className = "poe-res " + (right ? "ok" : "no"); r.setAttribute("role", "status");
+  r.innerHTML = `<b>${right ? "สมมติฐานถูกต้อง" : "ผลจริงต่างจากสมมติฐาน"}</b>
+    <div class="poe-cmp"><span>สมมติฐานของคุณ<em>${o.opts[S.pred]}</em></span><span>ผลจริง<em>${o.opts[o.correct]}</em></span></div><p>${o.why}</p>`;
+  setTimeout(() => $("actions").appendChild(r), 760);
+}
+function dataChart() {
+  const w = document.createElement("div"); w.className = "chart";
+  const X = t => 56 + t / 1000 * 236, Y = m => 12 + (100 - m) / 50 * 96;
+  w.innerHTML = `<div class="ch-h"><b>บันทึกข้อมูล: อุณหภูมิ กับ น้ำหนัก raw meal</b></div>
+    <svg viewBox="0 0 300 142" role="img" aria-label="กราฟน้ำหนักที่เหลือเทียบกับอุณหภูมิ">
+      <line x1="56" y1="108" x2="292" y2="108" class="ax"/><line x1="56" y1="8" x2="56" y2="108" class="ax"/>
+      <text x="40" y="58" class="lb" text-anchor="middle" transform="rotate(-90 40 58)">น้ำหนักที่เหลือ</text>
+      <line x1="${X(900)}" y1="8" x2="${X(900)}" y2="108" class="th"/>
+      <text x="${X(900)}" y="122" class="tk hot" text-anchor="middle">900</text>
+      <text x="${X(0)}" y="122" class="tk" text-anchor="middle">0</text><text x="${X(500)}" y="122" class="tk" text-anchor="middle">500</text><text x="${X(650)}" y="122" class="tk" text-anchor="middle">650</text>
+      
+      <text x="174" y="138" class="lb" text-anchor="middle">อุณหภูมิ (°C)</text>
+      <polyline class="ln" points=""/><circle class="dt" r="4" cx="${X(20)}" cy="${Y(100)}"/>
+      <text class="ann" x="${X(900) - 6}" y="${Y(65) + 4}" text-anchor="end"></text>
+    </svg>`;
+  $("hud").appendChild(w);
+  const pts = [], ln = w.querySelector(".ln"), dt = w.querySelector(".dt");
+  return { add(t, m) { const last = pts[pts.length - 1]; if (last && Math.abs(last[0] - t) < 4 && Math.abs(last[1] - m) < .3) return;
+      pts.push([t, m]); if (pts.length > 400) pts.shift();
+      ln.setAttribute("points", pts.map(([a, b]) => X(a).toFixed(1) + "," + Y(b).toFixed(1)).join(" "));
+      dt.setAttribute("cx", X(t)); dt.setAttribute("cy", Y(m)); },
+    note(txt) { w.querySelector(".ann").textContent = txt; w.classList.add("done"); } };
+}
+function successPanel(cp, title, sub) {
+  cp.classList.add("off"); cp.querySelector(".mush").disabled = true;
+  setTimeout(() => { cp.remove(); const ok = document.createElement("div"); ok.className = "success"; ok.setAttribute("role", "status");
+    ok.innerHTML = `<div class="tick"><svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><div><b>${title}</b><span>${sub}</span></div>`; $("actions").appendChild(ok); }, 700);
+}
+
+let S = {};
+const STEPS = [
+ { view: "overview", title: "เดินเครื่องโรงงานปูน", lesson: "ไม่ต้องรู้อะไรเรื่องปูนมาก่อน แค่สังเกต เดา แล้วลองพิสูจน์ดูว่าเดาถูกไหม", task: "หินเข้าทางซ้าย ปูนขาวออกทางขวา ไปทีละขั้นพร้อมกัน",
+   setup() { tag("หินเข้า", [-31, 7, 9]); tag("ปูนออก", [42, 12, 8]);
+     fb("เปิดหน้านี้ค้างไว้ แล้วกด <b>ถัดไป</b> เมื่อวิทยากรบอก"); complete(); } },
+
+ { view: "quarry", method: ["Observe & classify", "สังเกตและจัดกลุ่ม"], takeaway: "คุณแยก input ตามหน้าที่ทางเคมี และเห็นความสัมพันธ์แรก: Fe มากขึ้น สีปูนเข้มขึ้น", phase: "การเตรียมวัตถุดิบ", title: "Quarry + Raw mix",
+   task: "แตะกลุ่มแร่เพื่อดูว่าให้อะไร แล้วใส่ให้ครบ 4 กลุ่ม",
+   setup() {
+     PILES.forEach(P => { P.picked = false; P.m.emissiveIntensity = 0; });
+     const INFO = [
+       { ex: [], sym: "CaCO₃", gives: "หินปูน ให้ CaO ซึ่งเป็นส่วนประกอบหลักของ Clinker", role: "แกนหลักของ C₃S และ C₂S", chain: ["CaCO₃", "CaO + CO₂↑", "C₃S / C₂S"], add: { ca: .9 },
+         why: "แร่หลักคือ calcite ในหินปูน เมื่อเผา CaCO₃ แยกเป็น CaO กับ CO₂ แล้ว CaO จับกับ SiO₂ เป็น alite (C₃S) และ belite (C₂S) ซึ่งให้ความแข็งแรง ปูนขาวต้องใช้ชนิดที่ CaCO₃ สูงและเหล็กต่ำ" },
+       { ex: ["ดินขาว (kaolin)", "pyrophyllite", "white clay / white shale ที่เหล็กต่ำ"], sym: "Al·Si", gives: "ให้ Al₂O₃ และ SiO₂", role: "สร้าง C₃A และเฟสของเหลวตอนเผา", chain: ["Aluminosilicate", "Al₂O₃ + SiO₂", "C₃A, C₂S"], add: { al: .7, si: .3 },
+         why: "ตัวอย่างแร่: kaolinite Al₂Si₂O₅(OH)₄ หรือ aluminosilicate อื่นที่เหล็กต่ำ เมื่อร้อนจะเสียน้ำที่จับอยู่ในโครงสร้าง (ไม่ใช่ CO₂) ปูนเทาใช้ดินเหนียวทั่วไปที่มีเหล็กปน ปูนขาวต้องเลือกชนิดเหล็กต่ำ" },
+       { ex: ["iron ore (hematite, magnetite)", "mill scale", "ดินแดง / ศิลาแลง (laterite)"], sym: "Fe₂O₃", gives: "ต้องคุมให้ต่ำ", role: "Fe₂O₃ กลายเป็น C₄AF ซึ่งมีสีเข้ม", chain: ["Fe₂O₃", "+ CaO, Al₂O₃", "C₄AF (สีเข้ม)"], warn: 1,
+         why: "แหล่งที่มา: hematite, magnetite, iron ore, mill scale ปูนเทาตั้งใจเติมเพื่อช่วยหลอม แต่ Fe₂O₃ จับกับ CaO และ Al₂O₃ เป็นเฟส ferrite (C₄AF) ที่มีสีเข้ม ปูนขาวจึงคุม Fe₂O₃ ให้ต่ำกว่าราว 0.5% (ปูนเทามีราว 3%)" },
+       { ex: ["ทรายควอตซ์ (quartz sand)", "silica sand บริสุทธิ์สูง"], sym: "SiO₂", gives: "ตัวปรับสูตร: เติม SiO₂ ให้พอดี เหมือนเติมเกลือปรับรสอาหาร", role: "ปรับ silica modulus", chain: ["Quartz", "SiO₂", "C₃S / C₂S"], add: { si: .55 },
+         why: "ใช้ปรับสัดส่วน SiO₂ ต่อ (Al₂O₃ + Fe₂O₃) หรือ silica modulus ให้ได้ C₃S และ C₂S ตามต้องการ ต้องเป็น quartz ความบริสุทธิ์สูงที่เหล็กต่ำ" },
+       { ex: ["feldspar"], sym: "K·Na", gives: "ตัวช่วยหลอม: ทำให้ส่วนผสมละลายติดกันได้ง่ายขึ้น", role: "ลดอุณหภูมิหลอม แทน Fe₂O₃", chain: ["Alkali aluminosilicate", "K₂O, Na₂O", "ของเหลวช่วย sinter"], add: { al: .2, si: .1, flux: 1 },
+         why: "ในปูนเทา Fe₂O₃ กับ Al₂O₃ สร้างเฟสของเหลวที่ช่วยให้ sinter ได้ที่ราว 1,450 °C ปูนขาวไม่มีเหล็กช่วย จึงใช้ feldspar (KAlSi₃O₈, NaAlSi₃O₈) ซึ่งมีอัลคาไลช่วยหลอมแทน แต่ปูนขาวก็ยังต้องเผาร้อนกว่า ราว 1,500–1,600 °C" }];
+     const chem = { ca: 0, si: 0, al: 0, fe: .06 }; let got = 0, sel = -1, feT;
+
+     // recipe vessel (HUD)
+     const rec = document.createElement("div"); rec.className = "recipe";
+     rec.innerHTML = `<div class="rec-top"><b>สูตรของคุณ</b><span class="rec-n">0 / 4</span></div>
+       <div class="rec-body"><div class="slots">${"<span class='slot'></span>".repeat(4)}</div>
+       <div class="cprev"><span class="cs"></span><small>สีปูน</small></div></div>
+       <div class="chem">${[["ca", "CaO"], ["si", "SiO₂"], ["al", "Al₂O₃"], ["fe", "Fe₂O₃"]].map(([k, l]) =>
+         `<div class="crow ${k}"><span>${l}</span><div class="ctr"><i></i></div>${k === "fe" ? '<em>ต้องต่ำ</em>' : '<em></em>'}</div>`).join("")}</div>`;
+     const drawChem = () => { Object.entries(chem).forEach(([k, v]) => { rec.querySelector(".crow." + k + " i").style.width = Math.min(1, v) * 100 + "%"; });
+       const fe = rec.querySelector(".crow.fe"); fe.classList.toggle("bad", chem.fe > .3);
+       const cs = rec.querySelector(".cs"); cs.classList.toggle("empty", got === 0 && chem.fe <= .3);
+       cs.style.background = chem.fe > .3 ? "#8C8B86" : "#FBFAF6";
+       const c2 = document.querySelector(".fe-prev .cs"); if (c2) { c2.style.background = chem.fe > .3 ? "#8C8B86" : "#FBFAF6"; document.querySelector(".fe-prev b").textContent = chem.fe > .3 ? "เข้มขึ้น" : "ขาว"; } rec.querySelector(".cprev small").textContent = chem.fe > .3 ? "สีเข้มขึ้น" : got ? "ขาว" : "สีปูน"; };
+     drawChem();
+
+     // material tiles
+     const lab = document.createElement("div"); lab.className = "lab";
+     const ICON_FE = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4.5M12 17.5v.01"/></svg>';
+     const tiles = PILES.map((P, i) => { const I = INFO[i]; const hex = "#" + P.c.toString(16).padStart(6, "0");
+       const t = document.createElement("button"); t.type = "button"; t.className = "mtile" + (I.warn ? " warn" : "");
+       t.innerHTML = I.warn ? `<span class="sw" style="--c:${hex}"></span><span class="nm">${P.n}<small>${ICON_FE} ตัวแปรที่ต้องคุม</small></span><span class="sy">Fe₂O₃</span>`
+         : `<span class="sw" style="--c:${hex}"></span><span class="nm">${P.n}</span><span class="sy">?</span><span class="ok-b" aria-hidden="true"></span>`;
+       t.addEventListener("click", () => select(i)); return t; });
+     tiles.forEach((t, i) => { if (!INFO[i].warn) lab.appendChild(t); });
+     lab.appendChild(tiles[2]);
+     $("actions").appendChild(lab);
+
+     // detail panel
+     const det = document.createElement("div"); det.className = "detail"; det.hidden = true; $("actions").appendChild(det);
+     rec.style.flex = "1 1 100%"; $("actions").appendChild(rec);
+     function select(i) {
+       sel = i; const P = PILES[i], I = INFO[i]; buzz(10);
+       tiles.forEach((t, k) => t.classList.toggle("on", k === i)); if (!I.warn) tiles[i].querySelector(".sy").textContent = I.sym;
+       PILES.forEach(Q => { if (!Q.picked) Q.m.emissiveIntensity = 0; }); P.m.emissive.setHex(I.warn ? 0xb83c0a : 0xF2B705); P.m.emissiveIntensity = .45;
+       det.hidden = false; det.className = "detail" + (I.warn ? " warn" : "");
+       det.innerHTML = `<div class="d-head"><span class="d-sym">${I.sym}</span><div><b>${P.n}</b><span class="d-gives">${I.gives}</span><span class="d-role">${I.warn ? "" : "→ "}${I.role}</span></div></div>
+         <div class="ex"><span class="ex-l">${I.warn ? "แหล่งเหล็กที่ต้องหลีกเลี่ยง" : "ตัวอย่างวัตถุดิบสำหรับปูนขาว"}</span><div class="ex-c">${I.ex.map(e => `<span>${e}</span>`).join("")}</div></div>
+         <div class="chain">${I.chain.map((c, k) => `<span class="ch" style="--k:${k}">${c}</span>`).join('<span class="arr" aria-hidden="true">→</span>')}</div>
+         <details class="why"><summary>ทำไม?</summary><p>${I.why}</p></details>
+         <div class="d-act"></div>`;
+       const act = det.querySelector(".d-act");
+       if (I.warn) { act.insertAdjacentHTML("beforebegin", '<div class="fe-prev"><span class="cs"></span><span>สีปูนตอนนี้: <b>ขาว</b></span></div>'); drawChem();
+         const b = document.createElement("button"); b.type = "button"; b.className = "big hot"; b.textContent = "ลองเพิ่ม Fe ดูสิ";
+         b.addEventListener("click", () => { chem.fe = .9; drawChem(); buzz(60); fb("<b>Fe สูงขึ้น ปูนสีเข้มขึ้นทันที</b> นี่คือเหตุผลที่ปูนซีเมนต์ขาวต้องเก็บเหล็กให้ต่ำที่สุด", "bad");
+           clearTimeout(feT); feT = setTimeout(() => { chem.fe = .06; drawChem(); fb("เอา Fe ออกแล้ว สีปูนกลับมาขาว"); }, 2600); }); act.appendChild(b); }
+       else if (P.picked) { act.innerHTML = '<span class="in-mix">อยู่ในสูตรแล้ว</span>'; }
+       else { const b = document.createElement("button"); b.type = "button"; b.className = "big"; b.textContent = "ใส่ลงในสูตร";
+         b.addEventListener("click", () => addIt(i)); act.appendChild(b); }
+       det.classList.remove("play"); void det.offsetWidth; det.classList.add("play");
+       if (narrowDev) det.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
+     }
+     function addIt(i) {
+       const P = PILES[i], I = INFO[i]; if (P.picked) return;
+       P.picked = true; P.m.emissive.setHex(0x2f8a5b); P.m.emissiveIntensity = .35; got++; buzz(20);
+       Object.entries(I.add).forEach(([k, v]) => { if (k in chem) chem[k] += v; });
+       const slot = rec.querySelectorAll(".slot")[got - 1]; slot.style.setProperty("--c", "#" + P.c.toString(16).padStart(6, "0")); slot.textContent = I.sym; slot.classList.add("fill");
+       rec.querySelector(".rec-n").textContent = got + " / 4"; tiles[i].classList.add("added"); drawChem();
+       det.querySelector(".d-act").innerHTML = '<span class="in-mix">อยู่ในสูตรแล้ว ดูมันตกลงบน Conveyor ไปที่ Crusher</span>';
+       fb("");
+       if (got === 4) { lab.classList.add("off"); det.hidden = true; tiles.forEach(t => t.disabled = true);
+         const V = VIEWS.quarry2; goal.t.set(...V.t); goal.s = V.s; goal.th = V.th; goal.el = V.el;
+         tag("Conveyor", [-22.6, 2.4, 13.4]); tag("ต่อไป: Crusher", [-20, 6.6, 10], "co2 next");
+         const ok = document.createElement("div"); ok.className = "success"; ok.setAttribute("role", "status");
+         ok.innerHTML = '<div class="tick"><svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><div><b>สูตรพร้อมแล้ว</b><span>Fe₂O₃ ต่ำ Clinker จึงขาว ส่วนผสมกำลังไปที่ Crusher</span></div>';
+         $("actions").insertBefore(ok, rec); complete("รอวิทยากรก่อน"); }
+     }
+     PILES.forEach((P, i) => tag(P.n, [P.x, i % 2 ? 0 : 2.3, i % 2 ? 17.6 : 16.2], i % 2 ? "below" : ""));
+     fb("");
+   },
+   leave() { PILES.forEach(P => { P.m.emissiveIntensity = 0; }); } },
+
+ { view: "grind", method: ["Break it down", "แยกระบบเป็นขั้นย่อย"], takeaway: "กระบวนการใหญ่ดูยาก แต่พอแบ่งเป็นขั้นย่อย (ย่อย → บด → เก็บ) ก็ตามทีละขั้นได้", title: "Crusher + Raw mill", task: "กดปุ่มแดงรัว ๆ จน Silo เต็ม",
+   setup() {
+     let hits = 0; const N = 10 + Math.floor(Math.random() * 5); const up = meter("Raw meal", N); up(0, "");
+     mealLevel = 0;
+     tag("Crusher", [-20, 6.6, 10]); tag("Raw mill", [-10, 7.6, 6]); const siloTag = tag("Raw meal silo", [-10, 8.8, 1]);
+     const cp = document.createElement("div"); cp.className = "cpanel";
+     cp.innerHTML = `<div class="bezel"><button type="button" class="mush" aria-label="ย่อยหิน">ย่อย</button></div>
+       <div class="cp-r"><div class="cp-plate">Crusher <span>สาย 1</span></div>
+       <div class="lamps"><span class="lamp on"><i></i>ไฟเข้า</span><span class="lamp amb" id="lpRun"><i></i>กำลังย่อย</span><span class="lamp" id="lpFull"><i></i>Silo full</span></div>
+       <div class="cp-hint">กดปุ่มสีแดง</div></div>`;
+     $("actions").appendChild(cp);
+     const mush = cp.querySelector(".mush"), lpRun = cp.querySelector("#lpRun"), lpFull = cp.querySelector("#lpFull"); let runT;
+     const hit = () => { if (hits >= N) return; hits++; crushBurst(); jawKick = 1; FX.matBoost = 1; buzz(12); up(hits, ""); mealLevel = hits / N;
+       lpRun.classList.add("on"); clearTimeout(runT); runT = setTimeout(() => lpRun.classList.remove("on"), 260);
+       if (hits === N) {
+         lpFull.classList.add("on"); mush.disabled = true; cp.classList.add("off");
+         setTimeout(() => { cp.remove(); const ok = document.createElement("div"); ok.className = "success"; ok.setAttribute("role", "status");
+           ok.innerHTML = `<div class="tick"><svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><div><b>Raw meal พร้อมแล้ว</b><span>พร้อมเข้าสู่การเผา</span></div>`; $("actions").appendChild(ok); }, 700);
+         siloTag.el.textContent = "Silo full"; siloTag.el.classList.add("full");
+         goal.t.set(-12, 4.6, 4); goal.s = 15; goal.th = .75; goal.el = .45;
+         fb(""); const fl = $("hud").querySelector(".fl"); if (fl) fl.style.background = "var(--good)"; complete("รอวิทยากรก่อน"); }
+       else if (hits === 4) fb("Crusher ย่อยหินให้เป็นกรวด แล้ว Raw mill จะบดให้ละเอียดขึ้น กดต่อเลย"); };
+     mush.addEventListener("pointerdown", e => { e.preventDefault(); mush.classList.add("pressed"); hit(); });
+     ["pointerup", "pointerleave", "pointercancel"].forEach(ev => mush.addEventListener(ev, () => mush.classList.remove("pressed")));
+     mush.addEventListener("keydown", e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); mush.classList.add("pressed"); hit(); } });
+     mush.addEventListener("keyup", () => mush.classList.remove("pressed"));
+     stageTap = hit; fb("กดปุ่ม หรือแตะที่ภาพก็ได้");
+   } },
+
+ { view: "preheater", method: ["Collect data & correlate", "เก็บข้อมูล หาความสัมพันธ์"], takeaway: "กราฟของคุณคือหลักฐาน: อุณหภูมิผ่าน 900 °C เมื่อไหร่ น้ำหนักลดลงทันที อุณหภูมิกับการปล่อย CO₂ สัมพันธ์กัน", phase: "เคมีของ Calcination", title: "Preheater tower + Precalciner",
+   task: "กด เผา ค้างไว้ แล้วดูกราฟ",
+   setup() {
+     S.T = 20; S.acc = 0; S.n = 0; S.heat = false;
+     S.upT = meter("อุณหภูมิ", 1000, 900);
+     S.th = document.createElement("div"); S.th.className = "thresh"; S.th.innerHTML = `<span class="th-dot"></span><b>~900 °C</b><span class="th-t">Calcination เร่งตัว</span>`;
+     $("hud").appendChild(S.th); S.meterEl = $("hud").querySelector(".meter");
+     tag("Preheater / Precalciner", [0, 19.8, -4]); S.rx = tag("CaCO₃ → CaO + CO₂", [-.4, 13.2, -3], "co2 lg off");
+     S.chart = dataChart(); S.chart.add(20, 100); S.log = 0;
+     const eq = document.createElement("div"); eq.className = "eqbox";
+     eq.innerHTML = `<div class="eq-m"><span>CaCO₃</span><i>→</i><span>CaO</span><i>+</i><span class="co2">CO₂</span></div>`;
+     $("actions").appendChild(eq);
+     S.cp = controlPanel({ label: "เผา", aria: "กดค้างเพื่อให้ความร้อน", plate: "Precalciner", lcd: "อุณหภูมิหอ",
+       lamps: [["ไฟเข้า", "on"], ["ให้ความร้อน", "amb"], ["ถึง 900 °C", "hot"]], hint: "กดปุ่มสีแดงค้างไว้ แล้วดูกราฟ", onHold: x => S.heat = x });
+     fb("");
+   },
+   update(dt) {
+     if (!S.cp) return;
+     S.T = clamp(S.T + (S.heat || S.n >= 10 ? 320 : -150) * dt, 20, 950);
+     if (S.n < 10 && S.T > 925) S.T = 925; // calcination soaks up the heat: temperature plateaus while CO₂ leaves
+     S.upT(S.T, Math.round(S.T) + " °C");
+     S.pre = Math.max(S.pre || 0, .15 * Math.pow(clamp((S.T - 650) / 250, 0, 1), 2)); // slow decomposition starts ~650 °C
+     S.mass = 100 - 35 * (S.pre + (1 - .15) * clamp((S.n + (S.T >= 900 && S.n < 10 ? S.acc / .35 : 0)) / 10, 0, 1));
+     S.log += dt; if (S.log > .08) { S.log = 0; S.chart.add(S.T, S.mass); }
+     const past = S.T >= 900;
+     if (S.cp.cp.isConnected) { S.cp.lcd(Math.round(S.T) + " °C"); S.cp.lamp(1).classList.toggle("on", S.heat); S.cp.lamp(2).classList.toggle("on", past); S.cp.cp.querySelector(".lcd").classList.toggle("hot", past); }
+     if (past !== S.wasPast) { S.wasPast = past; S.th.classList.toggle("on", past); S.meterEl.classList.toggle("hot", past); S.rx.el.classList.toggle("off", !past);
+       S.th.querySelector(".th-t").textContent = past ? "กำลังเกิด Calcination" : "Calcination เร่งตัว"; if (past) buzz(30); }
+     FX.tower = clamp((S.T - 250) / 750, 0, 1);
+     if (S.T >= 900) { FX.gasMode = "rock"; FX.gasAmt = 1;
+       if (S.n < 10) { S.acc += dt; if (S.acc > .35) { S.acc = 0; S.n++; G.rock = S.n; buzz(8);
+
+         if (S.n === 10) { save(); S.cp.release(); S.heat = false;
+           successPanel(S.cp.cp, "หินปล่อย CO₂ ออกมาเอง", "สมการ Calcination: CaCO₃ → CaO + CO₂");
+           S.chart.note("น้ำหนักที่หายไป ส่วนใหญ่คือ CO₂");
+           fb("");
+           goal.t.set(1.6, 9.5, -4.5); goal.s = 28; complete("รอวิทยากรก่อน"); } } } }
+     else { FX.gasMode = S.n ? "rock" : "normal"; FX.gasAmt = S.n ? .5 : 1; }
+   } },
+
+ { view: "kiln", method: ["Find the condition", "หาเงื่อนไขที่ทำให้เกิดผล"], takeaway: "คุณทดลองจนเจอเงื่อนไข: ต้องถึง 1,500 °C และค้างไว้นานพอ ถ้าขาดอย่างใดอย่างหนึ่ง Clinker ไม่เกิด", phase: "การผลิต Clinker", title: "Rotary kiln", task: "กด Burner ค้างไว้จนถึง 1,500 °C",
+   setup() {
+     FX.cutaway = true; S.T = 900; S.burn = false; S.hot = 0; S.formed = false;
+     S.upT = meter("อุณหภูมิ", 1650, 1500);
+     S.th = threshBadge("1,500 °C", "จุดเกิด Clinker", "Clinker formation");
+     tag("Burner", [17.6, 5.2, -3]); S.clk = tag("Clinker เกิดตรงนี้", [13, 4.6, -3], "off");
+     S.cp = controlPanel({ label: "จุดไฟ", aria: "กด Burner ค้างไว้", plate: "Kiln burner", lcd: "อุณหภูมิ Kiln",
+       lamps: [["ไฟเข้า", "on"], ["Burner on", "amb"], ["ถึง 1,500 °C", "hot"]], hint: "กดปุ่มสีแดงค้างไว้", onHold: x => S.burn = x });
+     fb("เปลวไฟเผาเชื้อเพลิง และการเผาเชื้อเพลิงก็ปล่อย CO₂ ด้วย");
+   },
+   update(dt) {
+     const firing = S.burn || S.formed;
+     S.T = clamp(S.T + (firing ? 250 : -170) * dt, 900, 1650); S.upT(S.T, Math.round(S.T).toLocaleString() + " °C");
+     FX.flame += ((firing ? 1 : 0) - FX.flame) * Math.min(1, dt * 6); FX.sint = .3 + 1.4 * (S.T - 900) / 700;
+     FX.gasMode = firing ? "fuel" : "normal";
+     const past = S.T >= 1500; S.th(past);
+     if (S.cp.cp.isConnected) { S.cp.lcd(Math.round(S.T).toLocaleString() + " °C"); S.cp.lamp(1).classList.toggle("on", S.burn); S.cp.lamp(2).classList.toggle("on", past); S.cp.cp.querySelector(".lcd").classList.toggle("hot", past); }
+     if (!S.formed) { if (past) S.hot += dt; else S.hot = Math.max(0, S.hot - dt);
+       if (S.hot > 1.6) { S.formed = true; save(); S.cp.release(); S.burn = false; S.clk.el.classList.remove("off"); S.clk.el.classList.add("lg");
+         successPanel(S.cp.cp, "ได้ Clinker แล้ว", "Clinker (ลูกปูน) เกิดจากการนำผงวัตถุดิบ (Raw Meal) ไปเผาที่อุณหภูมิสูง จนเกิดการเปลี่ยนแปลงทางเคมีและจับตัวกันเป็นก้อนแข็งขนาดเล็ก");
+         fb(""); complete("รอวิทยากรก่อน"); } }
+   } },
+
+ { view: "cooler", phase: "ล็อกความขาวไว้", title: "Clinker cooler", task: "ตั้งสมมติฐาน แล้วทดลองเทียบ 2 แบบ: เย็นช้า กับ เย็นเร็ว",
+   setup() {
+     S.T = 1200; S.start = 0; S.over = false; S.mode = null; S.upT = meter("Clinker", 1300, 800);
+     tag("Water spray", [18.45, 4.9, -1.6]); tag("Cooler", [24.8, 2.4, -1.9]);
+     const HOT = "#FF7A33", YEL = "#E9D59A", WHT = "#FBFAF6";
+     const sw = (from, to, k) => lerpCol(from, to, clamp(k, 0, 1));
+     S.P = { opts: ["เย็นช้า ขาวกว่า", "ไม่ต่างกัน", "เย็นเร็ว ขาวกว่า"], correct: 2,
+       why: "ผลทดลองทั้ง 2 แบบยืนยัน: ถ้าค้างอยู่ในที่ร้อนนาน เหล็กที่เหลือนิดเดียวจะทำปฏิกิริยากับอากาศจนออกเหลือง การทำให้เย็นเร็วจึงรักษาความขาวไว้" };
+     predictGate({ q: "ความเร็วในการทำให้เย็น มีผลต่อสีของ Clinker ไหม?", opts: S.P.opts, onDone: () => trial1() });
+
+     const trial1 = () => {
+       const c = document.createElement("div"); c.className = "trial"; S.t1 = c;
+       c.innerHTML = `<div class="sc-h"><span class="sn">1</span><b>ทดลองที่ 1: ปล่อยให้เย็นเอง (ไม่ฉีดน้ำ)</b></div>
+         <div class="tr-row"><span class="tr-sw" style="background:${HOT}"></span><span class="tr-r">ยังไม่ได้ทดลอง</span>
+         <button type="button" class="big tr-go">เริ่มทดลอง</button></div>`;
+       $("actions").appendChild(c);
+       c.querySelector(".tr-go").addEventListener("click", e => { e.target.disabled = true; S.T = 1200; S.mode = "slow"; buzz(15);
+         c.querySelector(".tr-r").textContent = "กำลังเย็นลงช้า ๆ…"; fb("สังเกตสีของ Clinker ขณะเย็นลงเอง"); });
+       c.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
+     };
+     S.trial1Done = () => {
+       const c = S.t1; c.classList.add("done1"); c.querySelector(".tr-r").innerHTML = "<b>ผล: ออกเหลืองอ่อน</b>"; c.querySelector(".tr-go").remove(); S.mode = null;
+       fb("ผลแรกได้แล้ว ต่อไปลองแบบเย็นเร็ว"); trial2();
+     };
+     const trial2 = () => {
+       S.T = 1200; S.start = 0; S.over = false;
+       const h = document.createElement("div"); h.className = "sc-h tr2h"; h.innerHTML = '<span class="sn">2</span><b>ทดลองที่ 2: ฉีดน้ำให้ต่ำกว่า 800 °C ภายใน 2.5 วินาที</b>';
+       $("actions").appendChild(h);
+       S.th = threshBadge("800 °C", "เป้าหมาย", "เย็นทันเวลา", "cool");
+       const tap = () => { if (S.over || !S.cp) return; if (!S.start) { S.start = performance.now(); S.mode = "fast"; } S.T -= 45; FX.spray = Math.min(1, FX.spray + .25); buzz(8);
+         const l = S.cp.lamp(1); l.classList.add("on"); clearTimeout(S.lt); S.lt = setTimeout(() => l.classList.remove("on"), 200); };
+       S.cp = controlPanel({ label: "ฉีดน้ำ", aria: "ฉีดน้ำ", plate: "Clinker cooler", lcd: "อุณหภูมิ Clinker", lcd2: "เวลาที่เหลือ",
+         lamps: [["ไฟเข้า", "on"], ["น้ำ", "amb"], ["ต่ำกว่า 800 °C", ""]], hint: "กดปุ่มสีแดงรัว ๆ", onPress: tap });
+       S.cp.lcd2("2.5 วิ"); stageTap = tap;
+       S.reset = document.createElement("button"); S.reset.type = "button"; S.reset.className = "cp-reset"; S.reset.textContent = "รีเซ็ตแล้วลองใหม่"; S.reset.hidden = true;
+       S.cp.cp.querySelector(".cp-r").appendChild(S.reset);
+       S.reset.addEventListener("click", () => { S.T = 1200; S.start = 0; S.over = false; S.mode = null; S.reset.hidden = true; S.cp.mush.disabled = false; S.cp.cp.classList.remove("fail"); S.cp.lcd2("2.5 วิ"); fb("เริ่ม! นับเวลาตั้งแต่กดครั้งแรก"); });
+       S.cp.cp.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
+     };
+     S.finish = () => {
+       const cmp = document.createElement("div"); cmp.className = "tr-cmp";
+       cmp.innerHTML = `<div><span class="tr-sw" style="background:${YEL}"></span><b>เย็นช้า</b><span>ออกเหลืองอ่อน</span></div>
+         <div><span class="tr-sw" style="background:${WHT}"></span><b>เย็นเร็ว</b><span>ขาวสว่าง</span></div>`;
+       successPanel(S.cp.cp, "เปรียบเทียบผล 2 การทดลอง", "เปลี่ยนแค่ความเร็วในการทำให้เย็น สีก็ต่างกันแล้ว");
+       setTimeout(() => $("actions").appendChild(cmp), 740); predictReveal(S.P); fb(""); complete("รอวิทยากรก่อน");
+     };
+     S.col = { HOT, YEL, WHT, sw };
+     fb("");
+   },
+   update(dt) {
+     FX.spray = Math.max(0, FX.spray - dt * .8);
+     const C = S.col;
+     if (S.mode === "slow") {
+       S.T = Math.max(780, S.T - 140 * dt); S.upT(S.T, Math.round(S.T).toLocaleString() + " °C");
+       S.t1.querySelector(".tr-sw").style.background = C.sw(C.HOT, C.YEL, (1200 - S.T) / 400);
+       if (S.T <= 800) S.trial1Done();
+       return;
+     }
+     if (!S.cp) return;
+     if (!S.over) { if (S.start) S.T = Math.max(600, S.T - 12 * dt);
+       if (S.start) { const left = 2.5 - (performance.now() - S.start) / 1000; S.cp.lcd2(Math.max(0, left).toFixed(1) + " วิ");
+         if (S.T < 800) { S.over = true; S.th(true); S.cp.lamp(2).classList.add("on"); S.finish(); }
+         else if (left <= 0) { S.over = true; S.cp.mush.disabled = true; S.cp.cp.classList.add("fail"); S.reset.hidden = false;
+           fb("<b>ช้าไป ยังเย็นไม่ทัน</b> ผลจะออกมาเหลืองเหมือนการทดลองที่ 1 ลองใหม่อีกครั้ง", "bad"); } } }
+     S.upT(S.T, Math.round(S.T).toLocaleString() + " °C");
+     if (S.cp.cp.isConnected) S.cp.lcd(Math.round(S.T).toLocaleString() + " °C");
+   } },
+
+ { view: "ballmill", method: ["Compare one variable", "เปลี่ยนทีละตัวแปร"], takeaway: "คุณเปลี่ยนแค่ตัวแปรเดียว (ปริมาณยิปซัม) ดูผลทีละแบบ แล้วตัดสินใจจากหลักฐาน ไม่ใช่การเดา", phase: "ขั้นสุดท้ายของปูน", title: "Cement mill", task: "ยิปซัมคุมเวลาแข็งตัวของปูน ลองเทียบทีละปริมาณ แล้วกด เติม",
+   setup() {
+     tag("Cement mill", [34, 5.4, 8]); tag("ยิปซัม", [28, 5, 11.2]); S.silo = tag("White cement silo", [42, 11, 8], "off");
+     const SC = [
+       { l: "ไม่ใส่", v: "0%", work: [8, "ไม่กี่นาที"], str: [55, "ไม่แข็งแรง"], t: "C₃A ทำปฏิกิริยากับน้ำเร็วมาก ปูนจึงแข็งแทบทันที (flash set) จนแข็งตัวอยู่ในรถโม่ ปูนขาวมักมี C₃A มากกว่าปูนเทา จึงยิ่งต้องคุมยิปซัมให้ดี" },
+       { l: "นิดหน่อย", v: "5%", work: [70, "ไม่กี่ชั่วโมง"], str: [100, "แข็งแรง"], t: "ช่างมีเวลาไม่กี่ชั่วโมงในการผสม เท และปาดหน้า จากนั้นปูนจะแข็งตัวและแข็งแรงขึ้นเรื่อย ๆ", good: 1 },
+       { l: "เยอะ", v: "25%", work: [75, "ใกล้เคียงปกติ"], str: [35, "ขยายตัว แตกร้าว"], t: "ตอนเทดูปกติ แต่ยิปซัมที่เกินมาจะทำปฏิกิริยาต่อหลังปูนแข็งแล้ว ทำให้เนื้อปูนขยายตัวจนแตกร้าวภายหลัง" }];
+     const wrap = document.createElement("div"); wrap.className = "scen"; wrap.innerHTML = `
+       <div class="meter"><span>เวลาที่ใช้งานได้</span><div class="tr"><div class="fl" id="scW"></div></div><b id="scWt">?</b></div>
+       <div class="meter"><span>ความแข็งแรงสุดท้าย</span><div class="tr"><div class="fl" id="scS"></div></div><b id="scSt">?</b></div>
+       <p id="scT" class="scT">แตะปริมาณด้านบนเพื่อดูผลที่จะเกิด ลองเทียบได้ทุกแบบ</p>`;
+     $("hud").appendChild(wrap);
+     let sel = null;
+     const dose = () => {
+       if (!sel) { fb("เลือกปริมาณบนแผงก่อนนะ"); return; }
+       buzz(sel.good ? 20 : 80);
+       if (sel.good) { FX.mill = 4; S.silo.el.classList.remove("off"); S.silo.el.classList.add("lg"); S.cp.lamp(2).classList.add("on");
+         successPanel(S.cp.cp, "ปูนซีเมนต์ขาวพร้อมแล้ว", "มีเวลาเทปูน และยังแข็งแรง");
+         fb(""); complete("รอวิทยากรก่อน"); }
+       else { S.cp.cp.classList.remove("shakebtn"); void S.cp.cp.offsetWidth; S.cp.cp.classList.add("shakebtn");
+         fb("<b>ช่างคงไม่เลือกแบบนี้</b> ลองเทียบแถบกับปริมาณอื่นดู", "bad"); } };
+     S.cp = controlPanel({ label: "เติม", aria: "เติมยิปซัมปริมาณนี้", plate: "Gypsum feeder", lcd: "ปริมาณยิปซัม",
+       lamps: [["ไฟเข้า", "on"], ["Mill running", "on amb"], ["ปูนพร้อม", ""]], hint: "", onPress: dose });
+     S.cp.lcd("--");
+     const card1 = document.createElement("div"); card1.className = "stepcard on";
+     card1.innerHTML = `<div class="sc-h"><span class="sn">1</span><b>เลือกปริมาณยิปซัม แล้วดูผลที่จะเกิด</b></div>`;
+     const selw = document.createElement("div"); selw.className = "selector"; selw.setAttribute("role", "radiogroup"); selw.setAttribute("aria-label", "ปริมาณยิปซัม");
+     card1.appendChild(selw); card1.appendChild(wrap);
+     $("actions").insertBefore(card1, S.cp.cp);
+     const h2 = document.createElement("div"); h2.className = "sc-h p2"; h2.innerHTML = `<span class="sn">2</span><b>กดปุ่ม เติม เพื่อใช้ปริมาณที่เลือก</b>`;
+     S.cp.cp.insertBefore(h2, S.cp.cp.firstChild);
+     S.cp.cp.classList.add("locked"); S.cp.mush.disabled = true;
+     selw.addEventListener("keydown", e => { const bs = [...selw.querySelectorAll("button")], i = bs.indexOf(document.activeElement);
+       if (i < 0 || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return; e.preventDefault(); e.stopPropagation();
+       const n = bs[(i + (e.key === "ArrowLeft" || e.key === "ArrowUp" ? bs.length - 1 : 1)) % bs.length]; n.focus(); n.click(); });
+     SC.forEach(c => { const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", "false");
+       b.innerHTML = `<b>${c.l}</b><span>${c.v}</span>`; selw.appendChild(b);
+       b.addEventListener("click", () => { sel = c; fb(""); S.cp.lcd(c.v);
+         if (S.cp.cp.classList.contains("locked")) { S.cp.cp.classList.remove("locked"); S.cp.mush.disabled = false; S.cp.mush.classList.add("ready"); card1.classList.remove("on"); card1.classList.add("done1"); }
+         selw.querySelectorAll("button").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-checked", x === b ? "true" : "false"); });
+         $("scW").style.width = c.work[0] + "%"; $("scWt").textContent = c.work[1]; $("scS").style.width = c.str[0] + "%"; $("scSt").textContent = c.str[1];
+         $("scS").style.background = c.str[0] > 80 ? "var(--good)" : "var(--heat)"; $("scW").style.background = c.work[0] > 30 && c.work[0] < 90 ? "var(--good)" : "var(--heat)";
+         $("scT").textContent = c.t; }); });
+   } },
+
+ { view: "overview", method: ["Prove with facts", "พิสูจน์ด้วยข้อเท็จจริง"], phase: "LCA / การเก็บข้อมูล", title: "Carbon accounting",
+   task: "ชั่งขาเข้า แล้วชั่งขาออก น้ำหนักหายไปเท่าไหร่?",
+   setup() {
+     const tIn = tag("ขาเข้า: Kiln feed", [.4, 20.2, -2.6], "lg"), tOut = tag("ขาออก: Clinker", [27.2, 2.6, -3], "lg"); tag("ขอบเขต: Pyroprocess", [-4, .4, 2.2]); FX.boundary = true;
+     const cp = document.createElement("div"); cp.className = "cpanel scalep";
+     cp.innerHTML = `<div class="cp-plate" style="grid-column:1/-1">Mass balance <span>สาย 1</span></div>
+       <div class="sc"><div class="lcd"><span class="lcd-l">ขาเข้า: Kiln feed</span><b class="lcd-v" id="scIn">0.00 ตัน</b></div>
+         <button type="button" class="mush sm" id="btIn" aria-label="ชั่ง Kiln feed ขาเข้า">ชั่ง</button></div>
+       <div class="sc"><div class="lcd"><span class="lcd-l">ขาออก: Clinker</span><b class="lcd-v" id="scOut">-.-- ตัน</b></div>
+         <button type="button" class="mush sm" id="btOut" aria-label="ชั่ง Clinker ขาออก" disabled>ชั่ง</button></div>
+       <div class="sc-diff"><span>ส่วนที่หายไป (เข้า − ออก)</span><b id="scDiff">?</b></div>`;
+     $("actions").appendChild(cp);
+     const roll = (el, target, done) => { const t0 = performance.now(), D = reduce ? 0 : 1300;
+       const f = now => { const k = D ? Math.min(1, (now - t0) / D) : 1, e = 1 - Math.pow(1 - k, 3);
+         const jitter = k < 1 ? (Math.random() - .5) * .06 * (1 - k) : 0;
+         el.textContent = Math.max(0, target * e + jitter).toFixed(2) + " ตัน"; if (k < 1) requestAnimationFrame(f); else done(); };
+       requestAnimationFrame(f); };
+     const press = (b, fn) => { b.addEventListener("pointerdown", e => { e.preventDefault(); if (b.disabled) return; b.classList.add("pressed"); fn(); });
+       ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, () => b.classList.remove("pressed")));
+       b.addEventListener("keydown", e => { if ((e.key === " " || e.key === "Enter") && !e.repeat && !b.disabled) { e.preventDefault(); fn(); } }); };
+     const btIn = cp.querySelector("#btIn"), btOut = cp.querySelector("#btOut");
+     press(btIn, () => { btIn.disabled = true; buzz(15); goal.t.set(1.6, 11, -4.5); goal.s = 28; goal.th = .35; goal.el = .3;
+       fb("กำลังชั่ง Kiln feed ที่เข้า Preheater…");
+       roll(cp.querySelector("#scIn"), 1.52, () => { btOut.disabled = false; buzz([10, 30, 10]); fb("ได้ 1.52 ตัน ต่อไปชั่ง Clinker ที่ออกจาก Cooler"); }); });
+     press(btOut, () => { btOut.disabled = true; buzz(15); goal.t.set(25.5, 2.2, -4.5); goal.s = 15; goal.th = .45; goal.el = .5;
+       fb("กำลังชั่ง Clinker ที่ออกจาก Cooler…");
+       roll(cp.querySelector("#scOut"), 1.00, () => {
+         const d = cp.querySelector("#scDiff"); d.textContent = "0.52 ตัน"; cp.classList.add("solved"); buzz([20, 40, 20]);
+         const V = VIEWS.overview; goal.t.set(...V.t); goal.s = V.s; goal.th = V.th; goal.el = V.el;
+         fb("");
+         const ok = document.createElement("div"); ok.className = "success"; ok.setAttribute("role", "status");
+         ok.innerHTML = '<div class="tick"><svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><div><b>1.52 − 1.00 = 0.52 ตัน</b><span>ส่วนที่หายไปส่วนใหญ่คือ CO₂ จากหิน</span><details class="ok-more"><summary>ทำไมวัดแค่รอบ Pyroprocess?</summary><small>Crusher กับ Raw mill ใช้ไฟฟ้า ปล่อย CO₂ ทางอ้อม ไม่ได้ทำให้มวลหาย ส่วน CO₂ จากเชื้อเพลิงคิดแยก น้ำหนักที่หายไม่ใช่ CO₂ ทั้ง 100% งานจริงจึงคำนวณจาก CaO และ MgO ใน Clinker ด้วย</small></details></div>';
+         $("actions").appendChild(ok); complete("รอวิทยากรก่อน"); }); });
+     fb("เริ่มจากปุ่ม ชั่ง ฝั่งขาเข้า");
+   } },
+
+ { view: "bin", title: "จากหินร่วน สู่ Clinker",
+   task: "นี่คือ Clinker ที่ออกมาจากโรงงานของคุณ",
+   setup() {
+     tag("White clinker", [BIN.x, 2.6, BIN.z]);
+     const rc = document.createElement("div"); rc.className = "success fin-done"; rc.setAttribute("role", "status");
+     rc.innerHTML = '<div class="tick"><svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><div><b>เสร็จแล้ว!</b><span>คุณเดินเครื่องโรงงานครบทุกขั้น</span></div>';
+     $("hud").appendChild(rc);
+     const cmp = document.createElement("div"); cmp.className = "cmp";
+     cmp.innerHTML = `<div class="ba" role="group" aria-label="เทียบก่อนและหลัง">
+         <div class="ba-h b">ก่อน</div><div class="ba-h a">หลัง</div>
+         <div class="ba-img b"><svg viewBox="0 0 120 64" width="100%" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><path d="M4 58 Q18 12 32 58 Z" fill="#DCDAD3" stroke="#1C2024" stroke-width="1.2"/><path d="M32 58 Q46 18 60 58 Z" fill="#ADBFCA" stroke="#1C2024" stroke-width="1.2"/><path d="M60 58 Q74 20 88 58 Z" fill="#E7DCC0" stroke="#1C2024" stroke-width="1.2"/><path d="M88 58 Q102 22 116 58 Z" fill="#EAD6CC" stroke="#1C2024" stroke-width="1.2"/><circle cx="14" cy="50" r="1.4" fill="#8F8B81"/><circle cx="22" cy="44" r="1.4" fill="#8F8B81"/><circle cx="42" cy="52" r="1.4" fill="#8F8B81"/><circle cx="50" cy="47" r="1.4" fill="#8F8B81"/><circle cx="70" cy="53" r="1.4" fill="#8F8B81"/><circle cx="78" cy="49" r="1.4" fill="#8F8B81"/><circle cx="98" cy="54" r="1.4" fill="#8F8B81"/><circle cx="106" cy="50" r="1.4" fill="#8F8B81"/></svg><b>วัตถุดิบร่วน</b></div><div class="ba-img a"><svg viewBox="0 0 120 64" width="100%" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><defs><radialGradient id="ng" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#E4E1D8"/><stop offset="1" stop-color="#A9A59B"/></radialGradient></defs><ellipse cx="22" cy="46" rx="12" ry="10.2" fill="url(#ng)" stroke="#8F8B81" stroke-width="1"/><ellipse cx="46" cy="48" rx="13" ry="11.0" fill="url(#ng)" stroke="#8F8B81" stroke-width="1"/><ellipse cx="72" cy="47" rx="12" ry="10.2" fill="url(#ng)" stroke="#8F8B81" stroke-width="1"/><ellipse cx="96" cy="48" rx="11" ry="9.3" fill="url(#ng)" stroke="#8F8B81" stroke-width="1"/><ellipse cx="34" cy="26" rx="11" ry="9.3" fill="url(#ng)" stroke="#8F8B81" stroke-width="1"/><ellipse cx="60" cy="27" rx="12" ry="10.2" fill="url(#ng)" stroke="#8F8B81" stroke-width="1"/><ellipse cx="84" cy="28" rx="11" ry="9.3" fill="url(#ng)" stroke="#8F8B81" stroke-width="1"/><ellipse cx="58" cy="10" rx="8" ry="6.8" fill="url(#ng)" stroke="#8F8B81" stroke-width="1"/></svg><b>White clinker</b></div>
+         <div class="ba-c b">ก้อนหินและผงร่วน</div><div class="ba-c a">เม็ดกลม 1–3 ซม.</div>
+         <div class="ba-c b w"><i class="wbar" style="--w:100%"></i>≈ 1.5 ตัน</div><div class="ba-c a w"><i class="wbar" style="--w:66%"></i>1 ตัน</div>
+         <span class="ba-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg></span>
+       </div>
+
+       <section class="co2box" aria-label="แหล่งที่มาของ CO₂">
+         <h2>CO₂ มาจากไหน</h2>
+         <div class="co2bar" aria-hidden="true"><span class="p" style="width:55%"></span><span class="f" style="width:45%"></span></div>
+         <div class="co2stats">
+           <div class="st p"><b>≈ 50–60%</b><span class="en">Process emissions</span><span>จากหินเอง (Calcination)</span></div>
+           <div class="st f"><b>≈ 40–50%</b><span class="en">Fuel emissions</span><span>จากการเผาเชื้อเพลิง</span></div></div>
+         <p class="co2note">ปูนเทาทั่วไปราว 60/40 ปูนขาวเผาร้อนกว่าและใช้เชื้อเพลิงมากกว่า สัดส่วนจากเชื้อเพลิงจึงสูงขึ้น</p>
+       </section>`;
+     fb("");
+     complete("จบแล้ว ขอบคุณที่ช่วยเดินเครื่องโรงงาน!");
+   },
+   leave() { beforeGroup.visible = false; } }
+];
+
+/* ================= camera ================= */
+const cur = { t: v(...VIEWS.overview.t), s: VIEWS.overview.s, th: VIEWS.overview.th, el: VIEWS.overview.el };
+const goal = { t: cur.t.clone(), s: cur.s, th: cur.th, el: cur.el };
+function applyCam() {
+  const w = stage.clientWidth || 1, h = stage.clientHeight || 1, a = w / h;
+  const H = a < 1.2 ? cur.s * 1.25 / a : cur.s, W = H * a;
+  const fx = w > 820 ? .62 : .5, fy = .5;
+  cam.left = -W * fx; cam.right = W * (1 - fx); cam.top = H * fy; cam.bottom = -H * (1 - fy); cam.updateProjectionMatrix();
+  const d = 140, c = Math.cos(cur.el);
+  cam.position.set(cur.t.x + Math.sin(cur.th) * c * d, cur.t.y + Math.sin(cur.el) * d, cur.t.z + Math.cos(cur.th) * c * d);
+  cam.lookAt(cur.t);
+}
+function resize() { renderer.setSize(stage.clientWidth, stage.clientHeight, false); renderer.domElement.style.width = "100%"; renderer.domElement.style.height = "100%"; applyCam(); }
+addEventListener("resize", resize);
+function applyTheme() { renderer.setClearColor(new THREE.Color(css("--bg")), 1); ground.material.color.set(css("--ground")); ring.material.color.set(css("--heat")); }
+try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme); } catch (e) {}
+
+/* ================= navigation ================= */
+const dots = $("dots"); for (let i = 1; i < STEPS.length - 1; i++) { const d = document.createElement("i"); d.textContent = i; dots.appendChild(d); }
+function updateBar(msg) {
+  const done = !!G.done[G.step];
+  $("next").disabled = G.step === STEPS.length - 1;
+  $("next").textContent = done ? "ถัดไป" : "ข้าม"; $("next").classList.toggle("ghost", !done);
+  [...$("dots").children].forEach((d, k) => d.classList.toggle("on", !!G.done[k + 1]));
+  $("next").classList.toggle("ready", done && G.step > 0 && G.step < STEPS.length - 1);
+  const card = $("card"), st = $("status"), task = G.step > 0 && G.step < STEPS.length - 1;
+  card.classList.toggle("done", done && task); card.classList.toggle("todo", !done && task);
+  st.textContent = task && !done ? "ภารกิจ" : ""; st.className = "status" + (task && !done ? " go" : "");
+  $("prev").disabled = G.step === 0;
+  $("barmsg").textContent = msg || (done ? "" : "ทำภารกิจให้เสร็จก่อน");
+}
+function go(i) {
+  const old = STEPS[G.step]; if (old && old.leave) old.leave();
+  G.step = clamp(i, 0, STEPS.length - 1); save();
+  const st = STEPS[G.step]; S = {}; stageTap = null; resetFX();
+  TAGS.forEach(t => t.el.remove()); TAGS = [];
+  $("num").textContent = (G.step === 0 ? "กิจกรรมสด" : G.step === STEPS.length - 1 ? "ตอนจบ" : "ขั้นที่ " + G.step + " จาก " + (STEPS.length - 2)) + (st.phase ? ": " + st.phase : "");
+  [...dots.children].forEach((d, k) => { d.classList.toggle("on", !!G.done[k + 1]); d.classList.toggle("cur", k + 1 === G.step); });
+  $("title").textContent = st.title; $("task").textContent = st.task;
+  $("lesson").textContent = st.lesson || "";
+  $("method").innerHTML = ""; $("task").classList.toggle("minor", !!st.lesson); $("hud").innerHTML = ""; $("actions").innerHTML = ""; fb("");
+  updateBar(); st.setup();
+  const V = VIEWS[st.view]; goal.t.set(...V.t); goal.s = V.s; goal.th = V.th; goal.el = V.el;
+  if (reduce) { cur.t.copy(goal.t); cur.s = goal.s; cur.th = goal.th; cur.el = goal.el; }
+  $("card").scrollTop = 0;
+}
+$("next").addEventListener("click", () => go(G.step + 1));
+$("prev").addEventListener("click", () => go(G.step - 1));
+addEventListener("keydown", e => {
+  if (e.target.tagName === "BUTTON") return;
+  if (e.key === "ArrowRight") go(G.step + 1); if (e.key === "ArrowLeft") go(G.step - 1);
+});
+
+/* ================= loop ================= */
+const clock = new THREE.Clock(); let time = 0; const proj = new THREE.Vector3();
+const gasRock = new THREE.Color(0xC2410C), gasFuel = new THREE.Color(0x4a4f55);
+function frame() {
+  const dt = Math.min(clock.getDelta(), .1); time += dt;
+  const k = reduce ? 1 : 1 - Math.exp(-dt * 3.2), sp = reduce ? .15 : 1;
+  cur.t.lerp(goal.t, k); cur.s += (goal.s - cur.s) * k; cur.th += (goal.th - cur.th) * k; cur.el += (goal.el - cur.el) * k; applyCam();
+  const st = STEPS[G.step]; if (st.update) st.update(dt);
+  FX.matBoost = Math.max(0, FX.matBoost - dt * 1.5);
+  millEntry[1] += (FX.mill - millEntry[1]) * Math.min(1, dt * 2);
+  spins.forEach(([g, r]) => g.rotation.x += dt * r * sp);
+  const f = 1 + Math.sin(time * 13) * .06 + Math.sin(time * 7.3) * .05;
+  const fb2 = G.step === 4 ? .45 + FX.flame * 1.1 : 1;
+  flames.forEach(([a, b, l]) => { a.scale.set(fb2, f * fb2, fb2); b.scale.set(fb2, (2 - f) * fb2, fb2); l.intensity = (1.2 + (f - 1) * 3) * fb2; });
+  cut.visible = FX.cutaway; KA.spin.visible = !FX.cutaway;
+  if (FX.cutaway) { cut.userData.flames.forEach((m, j) => { const q = (1 + Math.sin(time * (11 + j * 3)) * .06) * (.35 + FX.flame * .9); m.scale.set(q, q, q); m.position.x = KA.L / 2 - .2 - 3 * q; });
+    cut.userData.light.intensity = .4 + FX.flame * 1.6; }
+  mat.zSint.emissiveIntensity = FX.sint + Math.sin(time * 2.4) * .1;
+  towerLight.intensity = FX.tower * 3.2 + (FX.tower > 0 ? Math.sin(time * 9) * .2 : 0);
+  flowCols.forEach(C => { C.g.visible = G.step === 3; if (!C.g.visible) return; const L = C.y1 - C.y0;
+    C.cones.forEach((m, i) => { const u = ((i / C.n) + time * .12) % 1; m.position.y = C.dir > 0 ? C.y0 + u * L : C.y1 - u * L; m.scale.setScalar(Math.min(1, Math.min(u, 1 - u) * 6)); }); });
+
+  mats.forEach((q, i) => {
+    q.u = (q.u + dt * .011 * sp * (1 + FX.matBoost * 4)) % 1; const pt = q.P.p.getPointAt(q.u).add(q.j);
+    dummy.position.copy(pt); dummy.rotation.set(q.u * 40, q.u * 25, 0); dummy.scale.setScalar(1); dummy.updateMatrix(); matMesh.setMatrixAt(i, dummy.matrix);
+    const U = q.P.u; const base = q.u < U.meal ? q.c : q.u < U.clink ? C.meal : q.u < U.cem ? C.clink : C.cem;
+    tmp.copy(base).lerp(C.hot, heatAt(pt)); matMesh.setColorAt(i, tmp);
+  });
+  matMesh.instanceMatrix.needsUpdate = true; matMesh.instanceColor.needsUpdate = true;
+  fuels.forEach((q, i) => {
+    q.u = (q.u + dt * .05 * sp * (G.step === 4 ? .3 + FX.flame * 2 : 1)) % 1; const pt = q.f.p.getPointAt(q.u);
+    dummy.position.copy(pt); dummy.rotation.set(q.u * 30, 0, 0); dummy.scale.setScalar(q.u > .88 ? (1 - q.u) / .12 : 1); dummy.updateMatrix();
+    fuelMesh.setMatrixAt(i, dummy.matrix); tmp.copy(q.c).lerp(C.hot, q.u > .85 ? (q.u - .85) / .15 : 0); fuelMesh.setColorAt(i, tmp);
+  });
+  fuelMesh.instanceMatrix.needsUpdate = true; fuelMesh.instanceColor.needsUpdate = true;
+  gases.forEach((q, i) => {
+    q.u = (q.u + dt * .03 * sp * (FX.gasMode === "normal" ? 1 : 2)) % 1; const pt = q.g.getPointAt(q.u).add(q.j);
+    const big = FX.gasMode === "normal" ? 1 : 1.45;
+    dummy.position.copy(pt); dummy.scale.setScalar((.7 + q.u * .9) * big * FX.gasAmt); dummy.updateMatrix(); gasMesh.setMatrixAt(i, dummy.matrix);
+    const base = FX.gasMode === "rock" ? gasRock : FX.gasMode === "fuel" ? gasFuel : C.gas;
+    tmp.copy(base).lerp(C.gasHot, FX.gasMode === "normal" ? clamp(1 - q.u / .35, 0, 1) : 0); gasMesh.setColorAt(i, tmp);
+  });
+  gasMesh.instanceMatrix.needsUpdate = true; gasMesh.instanceColor.needsUpdate = true;
+  const spr = G.step === 5 ? .4 + FX.spray * 2.2 : 1;
+  drops.forEach((q, i) => { const u = (q.o + time * 1.2 * sp * spr) % 1;
+    dummy.position.set(q.x + u * .4, 3.6 - u * 1.9, q.zl + q.z * (1 - u * .3)); dummy.scale.setScalar(G.step === 5 ? .6 + FX.spray * 1.4 : 1); dummy.updateMatrix(); dropMesh.setMatrixAt(i, dummy.matrix); });
+  fans.forEach(h => h.rotation.z -= dt * sp * (G.step === 5 ? 4 + FX.spray * 30 : 3));
+  dropMesh.instanceMatrix.needsUpdate = true;
+  for (let i = 0; i < SN; i++) { const s = sSeed[i], u = (s.o + time * .16 * sp) % 1; sPos[i * 3] = s.x + Math.sin(u * 6 + i) * .3; sPos[i * 3 + 1] = 4.7 + u * 5.5; sPos[i * 3 + 2] = s.z; }
+  steamGeo.attributes.position.needsUpdate = true; steamMat.opacity = G.step === 5 ? .45 + FX.spray * .5 : .5;
+
+  PILES.forEach(P => { const on = P.good && (G.step !== 1 || P.picked); P.flow += ((on ? 1 : 0) - P.flow) * Math.min(1, dt * 3); });
+  pileFlow.forEach((q, i) => { const P = q.P; q.u = (q.u + dt * sp * 2.2 / P.len * (1 + FX.matBoost)) % 1;
+    const pt = P.path.getPointAt(q.u).add(q.j); dummy.position.copy(pt); dummy.rotation.set(q.u * 30, q.u * 20, 0);
+    dummy.scale.setScalar(P.flow < .02 ? 0 : P.flow * (q.u > .95 ? (1 - q.u) / .05 : 1)); dummy.updateMatrix(); pileMesh.setMatrixAt(i, dummy.matrix); });
+  pileMesh.instanceMatrix.needsUpdate = true;
+  { const target = G.step === 2 ? mealLevel : (G.step > 2 || G.done[2] ? 1 : 0); mealShown += (target - mealShown) * Math.min(1, dt * 4);
+    const lv = Math.max(.001, mealShown); gaugeFill.scale.y = lv; gaugeFill.position.y = .1 + 6.2 * lv / 2;
+    const full = mealShown > .98; gaugeMat.color.setHex(full ? 0x2f8a5b : 0xF2B705); gaugeMat.emissive.setHex(full ? 0x2f8a5b : 0xF2B705);
+    fullRingMat.emissiveIntensity = full && G.step === 2 ? .8 + Math.sin(time * 5) * .4 : (full ? .3 : 0); }
+  jawKick = Math.max(0, jawKick - dt * 3.5);
+  jawPivot.rotation.z = -.28 - .22 * jawKick - (G.step === 2 ? Math.sin(time * 5) * .02 : 0);
+  flywheels.forEach(g => g.rotation.z -= dt * sp * (G.step === 2 ? 1.5 + jawKick * 14 : .8));
+  burst.forEach((b, i) => { if (b.life > 0) { b.life -= dt; b.vel.y -= 14 * dt; b.p.addScaledVector(b.vel, dt); if (b.p.y < .3) { b.p.y = .3; b.vel.set(0, 0, 0); } }
+    dummy.position.copy(b.life > 0 ? b.p : v(0, -50, 0)); dummy.scale.setScalar(b.life > 0 ? Math.min(1, b.life * 2) : 0); dummy.rotation.set(i, i * .7, 0); dummy.updateMatrix(); burstMesh.setMatrixAt(i, dummy.matrix); });
+  burstMesh.instanceMatrix.needsUpdate = true;
+  shakeT = Math.max(0, shakeT - dt);
+  nod.forEach((n, i) => { const j = shakeT > 0 ? Math.sin(time * 40 + i) * .05 * shakeT : 0;
+    dummy.position.set(BIN.x + n.x + j, n.y + Math.abs(j) * 2, BIN.z + n.z + j * .6); dummy.rotation.set(n.r, n.r * 1.3 + j * 3, 0); dummy.scale.setScalar(n.s); dummy.updateMatrix(); nodMesh.setMatrixAt(i, dummy.matrix); });
+  nodMesh.instanceMatrix.needsUpdate = true;
+  ring.visible = false; boundary.visible = !!FX.boundary;
+
+  const w = stage.clientWidth, h = stage.clientHeight;
+  TAGS.forEach(t => { proj.copy(t.pos).project(cam); const x = (proj.x + 1) / 2 * w, y = (1 - proj.y) / 2 * h;
+    t.el.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px) translate(-50%," + (t.below ? "0" : "-100%") + ")"; });
+  renderer.render(scene, cam);
+  requestAnimationFrame(frame);
+}
+nodMesh.instanceColor.needsUpdate = true; pileMesh.instanceColor.needsUpdate = true;
+applyTheme(); resize(); go(G.step); frame();
+})();
+</script>
+</body>
+</html>
